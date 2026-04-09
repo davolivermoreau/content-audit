@@ -4,125 +4,201 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex, nofollow" />
-  <title>Content Audit Dashboard — Mitel</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <title>Content Audit — Mitel Marketing Intelligence</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300&display=swap" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: #f0f4f8; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-    .fade-in { animation: fadeIn 0.3s ease forwards; }
-    textarea:focus, input:focus { outline: none; border-color: #0073d0 !important; box-shadow: 0 0 0 3px rgba(0,115,208,0.1); }
-    button:not(:disabled):hover { filter: brightness(0.94); }
-    button:not(:disabled):active { transform: scale(0.99); }
-    ::placeholder { color: #aab4be; }
-    .checkbox-card { cursor: pointer; transition: border-color 0.15s, background 0.15s; }
-    .checkbox-card:hover { border-color: #0073d0 !important; }
-    .pill { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; margin: 3px; cursor: pointer; transition: filter 0.15s; }
-    .pill:hover { filter: brightness(0.9); }
-    .fix-row { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-top: 1px solid #f0f4f8; cursor: pointer; }
-    .fix-row:first-child { border-top: none; }
-    .fix-row input[type=checkbox] { margin-top: 2px; accent-color: #0073d0; width: 14px; height: 14px; flex-shrink: 0; cursor: pointer; }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: #f0f4f8; color: #333; }
+
+    @keyframes spin   { to { transform: rotate(360deg); } }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .fade-up  { animation: fadeUp  0.35s ease forwards; }
+    .slide-up { animation: slideUp 0.3s ease forwards; }
+
+    textarea, input[type=text] {
+      background: #fff; border: 1.5px solid #dae1ea; border-radius: 8px;
+      font-size: 13.5px; font-family: inherit; color: #333;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    textarea:focus, input[type=text]:focus {
+      outline: none; border-color: #0073d0; box-shadow: 0 0 0 3px rgba(0,115,208,0.12);
+    }
+
+    .p-card { cursor: pointer; border: 1.5px solid #dae1ea; border-radius: 10px; background: #fff; padding: 14px 16px; display: flex; align-items: flex-start; gap: 12px; transition: border-color 0.15s, background 0.15s, box-shadow 0.15s; }
+    .p-card:hover  { border-color: #0073d0; box-shadow: 0 2px 12px rgba(0,115,208,0.1); }
+    .p-card.active { border-color: #0073d0; background: #eaf3fb; }
+
+    .kw-pill { display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: 100px; font-size: 12px; font-weight: 500; margin: 3px; cursor: pointer; transition: all 0.15s; border: 1.5px solid; }
+    .kw-pill:hover { filter: brightness(0.9); }
+    .kw-pill.active-pill { border-style: solid; }
+
+    /* Fix row — inline checkbox on each fix */
+    .fix-row { display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px; border-radius: 7px; cursor: pointer; transition: background 0.12s; margin: 2px 0; }
+    .fix-row:hover { background: #f5f8fc; }
+    .fix-row.checked { background: #eaf3fb; }
+    .fix-row input[type=checkbox] { margin-top: 3px; accent-color: #0073d0; width: 14px; height: 14px; flex-shrink: 0; cursor: pointer; }
+
+    .btn-primary { border: none; border-radius: 8px; font-family: inherit; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: filter 0.15s, transform 0.1s; text-transform: uppercase; letter-spacing: 0.7px; }
+    .btn-primary:not(:disabled):hover  { filter: brightness(0.93); }
+    .btn-primary:not(:disabled):active { transform: scale(0.98); }
+    .btn-primary:disabled { cursor: not-allowed; opacity: 0.4; }
+
+    .btn-ghost { background: transparent; border: 1.5px solid; border-radius: 7px; font-family: inherit; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; transition: background 0.15s; }
+    .btn-ghost:hover { background: rgba(255,255,255,0.14); }
+
+    /* Sticky bottom action bar */
+    .regen-bar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 100; background: #15325f; border-top: 3px solid #FDB913; padding: 14px 32px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 -4px 24px rgba(21,50,95,0.25); animation: slideUp 0.25s ease; }
+
+    .score-bar { transition: width 1s cubic-bezier(.34,1.2,.64,1); }
+
+    .copy-btn { background: none; border: 1px solid #dae1ea; font-family: inherit; font-size: 11px; font-weight: 600; cursor: pointer; padding: 4px 10px; border-radius: 5px; transition: background 0.15s; color: #0073d0; }
+    .copy-btn:hover { background: #eaf3fb; }
+    .copy-btn.copied { color: #009688; border-color: #009688; }
   </style>
 </head>
 <body>
 <div id="root"></div>
 <script type="text/babel">
-const { useState } = React;
+const { useState, useCallback } = React;
 
-/* ── Brand tokens ── */
 const M = {
   darkNavy: "#15325f", navBlue: "#2E5C8A", midBlue: "#0073d0",
   yellow: "#FDB913", purple: "#812cc4", teal: "#009688",
-  red: "#ec3831", bodyText: "#333333", headText: "#15325f",
+  red: "#ec3831", green: "#3d8b37",
+};
+
+const CDN = "https://ubiquitous-cheesecake-ca38cc.netlify.app";
+const ICONS = {
+  tone:    `${CDN}/New%20Icons-Products-Solutions/Icon_Products_Solutions_BlueGradBg/Icon_Products_Solutions_BlueGradBg_Megaphone.svg`,
+  seo:     `${CDN}/New%20Icons-Concepts/Icon_Concepts_BlueGradBg/Icon-Concepts_BlueGradBg_Insights.svg`,
+  persona: `${CDN}/New%20Icons-Concepts/Icon_Concepts_BlueGradBg/Icon-Concepts_BlueGradBg_Customer%20Experience.svg`,
+  cro:     `${CDN}/New%20Icons-Concepts/Icon_Concepts_BlueGradBg/Icon-Concepts_BlueGradBg_Action.svg`,
+  ai:      `${CDN}/New%20Icons-Concepts/Icon_Concepts_BlueGradBg/Icon-Concepts_BlueGradBg_AI.svg`,
 };
 
 const DIMS = [
-  { id: "tone",    label: "Tone & Brand",  color: M.midBlue,  light: "#e8f2fb", abbr: "T&B" },
-  { id: "seo",     label: "SEO / AEO",     color: M.teal,     light: "#e3f4f2", abbr: "SEO" },
-  { id: "persona", label: "Persona Fit",   color: M.purple,   light: "#f2eaf9", abbr: "PER" },
-  { id: "cro",     label: "CRO Readiness", color: "#b07d00",  light: "#fdf5e0", abbr: "CRO" },
+  { id: "tone",    label: "Tone & Brand",  desc: "Voice, clarity, Mitel standards",  color: M.midBlue,  bg: "#eaf3fb" },
+  { id: "seo",     label: "SEO / AEO",     desc: "Search & AI engine visibility",     color: M.teal,     bg: "#e3f4f2" },
+  { id: "persona", label: "Persona Fit",   desc: "Relevance to target audiences",     color: M.purple,   bg: "#f2eaf9" },
+  { id: "cro",     label: "CRO Readiness", desc: "Conversion potential & CTAs",       color: "#9a6b00",  bg: "#fdf6e0" },
 ];
 
 const PERSONAS = [
   { id: "it_dm",    label: "IT Decision Maker",       role: "CIO / IT Director",        pain: "reliability, security, TCO, vendor consolidation" },
-  { id: "biz_dm",   label: "Business Decision Maker", role: "CEO / CFO / COO",           pain: "employee productivity, cost control, business continuity" },
+  { id: "biz_dm",   label: "Business Decision Maker", role: "CEO / CFO / COO",           pain: "productivity, cost control, business continuity, ROI" },
   { id: "it_admin", label: "IT Admin / Engineer",     role: "Systems administrator",     pain: "ease of management, uptime, integration, minimal maintenance" },
   { id: "end_user", label: "End User",                role: "Daily communications user", pain: "ease of use, call quality, mobile access, consistency" },
   { id: "partner",  label: "Channel Partner",         role: "Reseller / MSP / VAR",      pain: "margins, competitive positioning, customer retention" },
 ];
 
 const getGrade = s => {
-  if (s >= 90) return { letter: "A", color: M.teal };
-  if (s >= 80) return { letter: "B", color: M.midBlue };
-  if (s >= 70) return { letter: "C", color: "#c49300" };
-  if (s >= 60) return { letter: "D", color: "#d4620a" };
-  return { letter: "F", color: M.red };
+  if (s >= 90) return { letter: "A", color: M.teal,    label: "Excellent" };
+  if (s >= 80) return { letter: "B", color: M.midBlue, label: "Good" };
+  if (s >= 70) return { letter: "C", color: "#c49300", label: "Fair" };
+  if (s >= 60) return { letter: "D", color: "#d4620a", label: "Needs work" };
+  return         { letter: "F", color: M.red,     label: "Poor" };
 };
 
+/* ── Copy to clipboard (Safari-safe) ── */
+function copyText(text, setCopied) {
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1800); });
+  } else {
+    const ta = document.createElement("textarea");
+    ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+    setCopied(true); setTimeout(() => setCopied(false), 1800);
+  }
+}
+
 /* ── Components ── */
-const ScoreRing = ({ score, color, size = 68 }) => {
-  const r = 26, circ = 2 * Math.PI * r;
-  const offset = circ - (Math.round(score) / 100) * circ;
+const Spin = ({ dark, size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+    style={{ animation: "spin 0.75s linear infinite", flexShrink: 0 }}>
+    <circle cx="8" cy="8" r="6" stroke={dark ? "#15325f" : "#fff"} strokeWidth="2.5"
+      strokeDasharray="28" strokeDashoffset="10" strokeLinecap="round" opacity="0.5" />
+  </svg>
+);
+
+const ScoreRing = ({ score, color, size = 74 }) => {
+  const r = 30, circ = 2 * Math.PI * r;
+  const offset = circ - (score / 100) * circ;
   return (
-    <svg width={size} height={size} viewBox="0 0 68 68">
-      <circle cx="34" cy="34" r={r} fill="none" stroke="rgba(0,0,0,0.07)" strokeWidth="5" />
-      <circle cx="34" cy="34" r={r} fill="none" stroke={color} strokeWidth="5"
+    <svg width={size} height={size} viewBox="0 0 74 74">
+      <circle cx="37" cy="37" r={r} fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="6" />
+      <circle cx="37" cy="37" r={r} fill="none" stroke={color} strokeWidth="6"
         strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round"
-        transform="rotate(-90 34 34)"
-        style={{ transition: "stroke-dashoffset 0.9s cubic-bezier(.34,1.56,.64,1)" }} />
-      <text x="34" y="38" textAnchor="middle" fill={color} fontSize="13" fontWeight="700"
+        transform="rotate(-90 37 37)"
+        style={{ transition: "stroke-dashoffset 1s cubic-bezier(.34,1.2,.64,1)" }} />
+      <text x="37" y="42" textAnchor="middle" fill={color} fontSize="15" fontWeight="700"
         fontFamily="Inter, system-ui">{Math.round(score)}</text>
     </svg>
   );
 };
 
-const Spin = ({ dark }) => (
-  <svg width="15" height="15" viewBox="0 0 16 16" fill="none"
-    style={{ animation: "spin 0.8s linear infinite", flexShrink: 0 }}>
-    <circle cx="8" cy="8" r="6" stroke={dark ? "#333" : "#fff"} strokeWidth="2"
-      strokeDasharray="28" strokeDashoffset="10" strokeLinecap="round" opacity="0.45" />
-  </svg>
-);
+const CopyButton = ({ text }) => {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button className={`copy-btn${copied ? " copied" : ""}`} onClick={() => copyText(text, setCopied)}>
+      {copied ? "✓ Copied" : "Copy"}
+    </button>
+  );
+};
 
-const MitelMark = () => (
-  <div style={{ width: 34, height: 34, background: M.yellow, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-    <svg width="20" height="16" viewBox="0 0 20 16" fill="none">
-      <rect x="0"   y="0" width="5" height="16" rx="1" fill={M.darkNavy} />
-      <rect x="7.5" y="0" width="5" height="16" rx="1" fill={M.darkNavy} />
-      <rect x="15"  y="0" width="5" height="16" rx="1" fill={M.darkNavy} />
-    </svg>
-  </div>
-);
+/* Score comparison badge */
+const ScoreDelta = ({ before, after }) => {
+  const delta = Math.round(after - before);
+  if (delta === 0) return <span style={{ fontSize: 11, color: "#9aabb8", fontWeight: 500 }}>No change</span>;
+  const pos = delta > 0;
+  return (
+    <span style={{ fontSize: 12, fontWeight: 700, color: pos ? M.teal : M.red, background: pos ? "#e3f4f2" : "#fff5f5", border: `1px solid ${pos ? M.teal : M.red}`, padding: "2px 8px", borderRadius: 20 }}>
+      {pos ? "+" : ""}{delta}
+    </span>
+  );
+};
 
-const DiffView = ({ original, improved }) => (
-  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 16 }}>
-    {[
-      { label: "Original", text: original, bg: "#fff5f5", border: "#fecaca", tag: "#ef4444" },
-      { label: "Improved", text: improved,  bg: "#f0fdf4", border: "#bbf7d0", tag: "#16a34a" },
-    ].map(({ label, text, bg, border, tag }) => (
-      <div key={label} style={{ background: bg, border: `1px solid ${border}`, borderRadius: 8, padding: 16 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: tag, textTransform: "uppercase", letterSpacing: "0.7px" }}>{label}</span>
-          <button onClick={() => navigator.clipboard?.writeText(text)}
-            style={{ fontSize: 11, color: M.midBlue, background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>
-            Copy
-          </button>
+/* ── Results panel (reusable for original + re-analysis) ── */
+const ResultsPanel = ({ results, label, accentColor }) => {
+  const grade = getGrade(results.overall_score);
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: accentColor, textTransform: "uppercase", letterSpacing: "0.9px" }}>{label}</span>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+          <span style={{ fontSize: 28, fontWeight: 700, color: grade.color, lineHeight: 1 }}>{grade.letter}</span>
+          <span style={{ fontSize: 18, fontWeight: 700, color: "#15325f" }}>{Math.round(results.overall_score)}<span style={{ fontSize: 12, color: "#9aabb8", fontWeight: 400 }}>/100</span></span>
         </div>
-        <p style={{ fontSize: 13, color: M.bodyText, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{text}</p>
       </div>
-    ))}
-  </div>
-);
+      {DIMS.map(d => {
+        const dim = results.dimensions[d.id];
+        if (!dim) return null;
+        const col = d.id === "cro" ? "#9a6b00" : d.color;
+        return (
+          <div key={d.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0", borderTop: "1px solid #f0f4f8" }}>
+            <img src={ICONS[d.id]} alt="" width={22} height={22} />
+            <span style={{ fontSize: 12.5, color: "#444", flex: 1 }}>{d.label}</span>
+            <div style={{ width: 80, height: 5, background: "#edf2f7", borderRadius: 3, overflow: "hidden" }}>
+              <div style={{ height: "100%", width: `${Math.round(dim.score)}%`, background: col, borderRadius: 3, transition: "width 1s ease" }} />
+            </div>
+            <span style={{ fontSize: 13, fontWeight: 700, color: col, minWidth: 28, textAlign: "right" }}>{Math.round(dim.score)}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
 
-/* ── API helpers — all calls go through server.py ── */
+/* ── API helpers ── */
 async function post(endpoint, body) {
   const r = await fetch(endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+    method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
   const d = await r.json();
@@ -130,61 +206,73 @@ async function post(endpoint, body) {
   return d.text;
 }
 
-/* ══════════════════════════════════════════════════════════════════════════ */
+/* ══ Main App ══════════════════════════════════════════════════════════════ */
 function App() {
+  /* Input state */
   const [content,          setContent]          = useState("");
   const [selectedPersonas, setSelectedPersonas] = useState([]);
   const [kwInput,          setKwInput]          = useState("");
   const [suggestedKws,     setSuggestedKws]     = useState([]);
   const [activeKws,        setActiveKws]        = useState([]);
   const [kwLoading,        setKwLoading]        = useState(false);
-  const [loading,          setLoading]          = useState(false);
+
+  /* Results state */
+  const [view,             setView]             = useState("form"); // "form" | "loading" | "results"
   const [results,          setResults]          = useState(null);
   const [error,            setError]            = useState(null);
+
+  /* Regenerate state */
   const [checkedFixes,     setCheckedFixes]     = useState({});
   const [regenLoading,     setRegenLoading]     = useState(false);
   const [improved,         setImproved]         = useState(null);
 
-  const togglePersona = id =>
-    setSelectedPersonas(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
+  /* Re-analyze state */
+  const [reanalyzing,      setReanalyzing]      = useState(false);
+  const [reanalysisResults,setReanalysisResults]= useState(null);
 
-  const toggleKw = kw =>
-    setActiveKws(ks => ks.includes(kw) ? ks.filter(k => k !== kw) : [...ks, kw]);
+  const togglePersona = id => setSelectedPersonas(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
+
+  const toggleKw = kw => setActiveKws(ks => ks.includes(kw) ? ks.filter(k => k !== kw) : [...ks, kw]);
 
   const addManualKws = () => {
     const kws = kwInput.split(",").map(k => k.trim()).filter(Boolean);
+    if (!kws.length) return;
     setActiveKws(prev => [...new Set([...prev, ...kws])]);
     setKwInput("");
   };
 
   const suggestKeywords = async () => {
     if (!content.trim()) return;
-    setKwLoading(true);
+    setKwLoading(true); setError(null);
     try {
       const text = await post("/api/keywords", { content, existing: activeKws });
       const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
       setSuggestedKws(parsed);
       setActiveKws(prev => [...new Set([...prev, ...parsed])]);
-    } catch (e) { setError("Keyword suggestion failed — try again."); }
+    } catch { setError("Keyword suggestion failed — please try again."); }
     finally { setKwLoading(false); }
   };
 
-  const analyze = async () => {
-    if (content.trim().length < 80) { setError("Paste at least 80 characters of content."); return; }
-    if (selectedPersonas.length === 0) { setError("Select at least one target persona."); return; }
-    setError(null); setLoading(true); setResults(null); setImproved(null); setCheckedFixes({});
+  const analyze = async (contentToAnalyze = content) => {
+    if (contentToAnalyze.trim().length < 80) { setError("Paste at least 80 characters of content."); return; }
+    if (selectedPersonas.length === 0) { setError("Select at least one persona."); return; }
+    setError(null); setView("loading");
     try {
       const personas = selectedPersonas.map(id => PERSONAS.find(p => p.id === id));
-      const text = await post("/api/analyze", { content, personas, keywords: activeKws });
+      const text = await post("/api/analyze", { content: contentToAnalyze, personas, keywords: activeKws });
       setResults(JSON.parse(text.replace(/```json|```/g, "").trim()));
-    } catch (e) { setError(e.message || "Analysis failed — please try again."); }
-    finally { setLoading(false); }
+      setImproved(null); setReanalysisResults(null); setCheckedFixes({});
+      setView("results");
+    } catch (e) {
+      setError(e.message || "Analysis failed — please try again.");
+      setView("form");
+    }
   };
 
   const regenerate = async () => {
     const fixes = Object.entries(checkedFixes).filter(([, v]) => v).map(([k]) => k);
-    if (!fixes.length) { setError("Select at least one fix to apply."); return; }
-    setRegenLoading(true); setImproved(null); setError(null);
+    if (!fixes.length) return;
+    setRegenLoading(true); setImproved(null); setReanalysisResults(null); setError(null);
     try {
       const text = await post("/api/regenerate", { content, fixes });
       setImproved(text.trim());
@@ -192,290 +280,465 @@ function App() {
     finally { setRegenLoading(false); }
   };
 
-  const reset = () => {
-    setResults(null); setContent(""); setActiveKws([]); setSuggestedKws([]);
-    setKwInput(""); setError(null); setImproved(null); setCheckedFixes({}); setSelectedPersonas([]);
+  const reanalyzeImproved = async () => {
+    if (!improved) return;
+    setReanalyzing(true); setReanalysisResults(null); setError(null);
+    try {
+      const personas = selectedPersonas.map(id => PERSONAS.find(p => p.id === id));
+      const text = await post("/api/analyze", { content: improved, personas, keywords: activeKws });
+      setReanalysisResults(JSON.parse(text.replace(/```json|```/g, "").trim()));
+    } catch (e) { setError(e.message || "Re-analysis failed."); }
+    finally { setReanalyzing(false); }
+  };
+
+  /* Go back to form without losing content */
+  const goBack = () => {
+    setView("form"); setResults(null); setImproved(null);
+    setReanalysisResults(null); setCheckedFixes({}); setError(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const fullReset = () => {
+    goBack(); setContent(""); setActiveKws([]); setSuggestedKws([]); setKwInput(""); setSelectedPersonas([]);
   };
 
   const allFixes = results
     ? DIMS.flatMap(d => (results.dimensions[d.id]?.fixes || []).map(f => ({ fix: f, dim: d })))
     : [];
   const selectedFixCount = Object.values(checkedFixes).filter(Boolean).length;
+  const canRun = content.trim().length >= 80 && selectedPersonas.length > 0;
 
-  /* Shared styles */
-  const inp  = { background: "#fff", border: "1px solid #cfd8e3", borderRadius: 6, fontSize: 13, fontFamily: "Inter, system-ui", color: M.bodyText };
-  const lbl  = { fontSize: 11, fontWeight: 700, color: M.navBlue, textTransform: "uppercase", letterSpacing: "0.8px", display: "block", marginBottom: 7 };
-  const card = { background: "#fff", border: "1px solid #d5dfe8", borderRadius: 10, padding: 24, boxShadow: "0 2px 8px rgba(21,50,95,0.06)", marginBottom: 16 };
+  const card = { background: "#fff", border: "1.5px solid #dae1ea", borderRadius: 12, padding: "24px 26px", marginBottom: 18, boxShadow: "0 2px 12px rgba(21,50,95,0.06)" };
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f0f4f8", fontFamily: "Inter, system-ui, sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: "#f0f4f8", paddingBottom: selectedFixCount > 0 ? 80 : 0 }}>
 
       {/* ── Utility bar ── */}
-      <div style={{ background: M.darkNavy, height: 36, padding: "0 28px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span style={{ fontSize: 11.5, color: "rgba(255,255,255,0.55)" }}>Mitel Marketing Intelligence</span>
-        <span style={{ fontSize: 10.5, fontWeight: 700, color: M.yellow, textTransform: "uppercase", letterSpacing: "0.9px" }}>Beta · Internal Use Only</span>
+      <div style={{ background: M.darkNavy, height: 34, padding: "0 32px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <span style={{ fontSize: 11.5, color: "rgba(255,255,255,0.5)" }}>Mitel Marketing Intelligence</span>
+        <span style={{ fontSize: 10.5, fontWeight: 700, color: M.yellow, textTransform: "uppercase", letterSpacing: "1px" }}>Beta · Internal Use Only</span>
       </div>
 
       {/* ── Nav ── */}
-      <div style={{ background: M.navBlue, height: 60, padding: "0 28px", display: "flex", alignItems: "center", gap: 14, borderBottom: `3px solid ${M.yellow}` }}>
-        <MitelMark />
-        <span style={{ fontSize: 18, fontWeight: 700, color: "#fff", letterSpacing: "-0.3px" }}>mitel</span>
-        <div style={{ width: 1, height: 22, background: "rgba(255,255,255,0.2)", margin: "0 4px" }} />
-        <div>
-          <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#fff", lineHeight: 1.2 }}>Content Audit Dashboard</p>
-          <p style={{ margin: 0, fontSize: 11, color: "rgba(255,255,255,0.5)" }}>Powered by Claude AI</p>
+      <nav style={{ background: M.navBlue, borderBottom: `3px solid ${M.yellow}`, padding: "0 32px", height: 64, display: "flex", alignItems: "center", gap: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, paddingRight: 24, borderRight: "1px solid rgba(255,255,255,0.18)", marginRight: 24 }}>
+          <div style={{ width: 36, height: 36, background: M.yellow, borderRadius: 5, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <svg width="22" height="18" viewBox="0 0 22 18" fill="none">
+              <rect x="0"  y="0" width="6" height="18" rx="1.5" fill={M.darkNavy} />
+              <rect x="8"  y="0" width="6" height="18" rx="1.5" fill={M.darkNavy} />
+              <rect x="16" y="0" width="6" height="18" rx="1.5" fill={M.darkNavy} />
+            </svg>
+          </div>
+          <span style={{ fontSize: 20, fontWeight: 700, color: "#fff", letterSpacing: "-0.5px", lineHeight: 1 }}>mitel</span>
         </div>
-        {results && (
-          <button onClick={reset} style={{ marginLeft: "auto", padding: "7px 16px", background: "transparent", border: "1px solid rgba(255,255,255,0.3)", borderRadius: 4, color: "#fff", fontSize: 11.5, fontWeight: 700, cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.6px" }}>
-            ← New Audit
-          </button>
-        )}
-      </div>
+        <div>
+          <p style={{ margin: 0, fontSize: 14.5, fontWeight: 600, color: "#fff", lineHeight: 1.15 }}>Content Audit Dashboard</p>
+          <p style={{ margin: 0, fontSize: 11, color: "rgba(255,255,255,0.5)", display: "flex", alignItems: "center", gap: 5 }}>
+            <img src={ICONS.ai} alt="" width={12} height={12} style={{ opacity: 0.75 }} />
+            Powered by Claude AI
+          </p>
+        </div>
+        <div style={{ marginLeft: "auto", display: "flex", gap: 10 }}>
+          {view === "results" && (
+            <button onClick={goBack} className="btn-ghost"
+              style={{ color: "#fff", borderColor: "rgba(255,255,255,0.35)", fontSize: 12, padding: "7px 15px" }}>
+              ← Edit content
+            </button>
+          )}
+          {view === "results" && (
+            <button onClick={fullReset} className="btn-ghost"
+              style={{ color: "rgba(255,255,255,0.6)", borderColor: "rgba(255,255,255,0.2)", fontSize: 12, padding: "7px 15px" }}>
+              New audit
+            </button>
+          )}
+        </div>
+      </nav>
 
-      <div style={{ maxWidth: 920, margin: "0 auto", padding: "36px 28px" }}>
+      {/* ── Hero ── */}
+      {view === "form" && (
+        <div style={{ background: `linear-gradient(135deg, ${M.darkNavy} 0%, #1b3f6e 50%, #2c1a50 100%)`, padding: "48px 32px 52px", textAlign: "center" }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(253,185,19,0.15)", border: "1px solid rgba(253,185,19,0.3)", borderRadius: 100, padding: "5px 14px", marginBottom: 18 }}>
+            <img src={ICONS.ai} alt="" width={13} height={13} />
+            <span style={{ fontSize: 11.5, fontWeight: 600, color: M.yellow, letterSpacing: "0.6px", textTransform: "uppercase" }}>AI-Powered Analysis</span>
+          </div>
+          <h1 style={{ fontSize: 34, fontWeight: 700, color: "#fff", lineHeight: 1.2, marginBottom: 12, letterSpacing: "-0.5px" }}>
+            Score your content<br /><span style={{ color: M.yellow }}>before it goes live</span>
+          </h1>
+          <p style={{ fontSize: 15.5, color: "rgba(255,255,255,0.55)", maxWidth: 460, margin: "0 auto 32px", lineHeight: 1.6, fontWeight: 300 }}>
+            Audit any marketing copy across Tone, SEO/AEO, Persona Fit and CRO Readiness in seconds.
+          </p>
+          <div style={{ display: "flex", justifyContent: "center", gap: 36 }}>
+            {DIMS.map(d => (
+              <div key={d.id} style={{ textAlign: "center" }}>
+                <div style={{ width: 50, height: 50, margin: "0 auto 8px", opacity: 0.88 }}>
+                  <img src={ICONS[d.id]} alt={d.label} width={50} height={50} />
+                </div>
+                <p style={{ fontSize: 10.5, fontWeight: 600, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: "0.5px" }}>{d.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
-        {/* ── Input form ── */}
-        {!results && (
-          <>
-            <p style={{ margin: "0 0 5px", fontSize: 11.5, fontWeight: 700, color: M.yellow, textTransform: "uppercase", letterSpacing: "1px" }}>Marketing Content Analysis</p>
-            <h1 style={{ margin: "0 0 24px", fontSize: 24, fontWeight: 700, color: M.headText }}>Score your content before it goes live</h1>
+      <div style={{ maxWidth: 920, margin: "0 auto", padding: "30px 28px 60px" }}>
+
+        {/* ══ FORM ══ */}
+        {view === "form" && (
+          <div className="fade-up">
 
             {/* Content */}
             <div style={card}>
-              <label style={lbl}>Content to audit</label>
-              <textarea style={{ ...inp, width: "100%", minHeight: 150, padding: "12px 14px", fontSize: 13.5, lineHeight: 1.65, resize: "vertical" }}
+              <label style={{ fontSize: 11, fontWeight: 700, color: M.navBlue, textTransform: "uppercase", letterSpacing: "0.9px", display: "block", marginBottom: 10 }}>Content to audit</label>
+              <textarea style={{ width: "100%", minHeight: 155, padding: "13px 15px", fontSize: 14, lineHeight: 1.7, resize: "vertical" }}
                 placeholder="Paste your web page copy, email, blog post, or any marketing content here…"
                 value={content} onChange={e => setContent(e.target.value)} />
+              {content.length > 0 && (
+                <p style={{ fontSize: 11, color: content.length < 80 ? M.red : "#9aabb8", marginTop: 6, textAlign: "right" }}>
+                  {content.length} chars {content.length < 80 ? `— need ${80 - content.length} more` : "✓"}
+                </p>
+              )}
             </div>
 
             {/* Personas */}
             <div style={card}>
-              <label style={lbl}>Target personas <span style={{ color: "#9aabb8", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(select all that apply)</span></label>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 14 }}>
+                <label style={{ fontSize: 11, fontWeight: 700, color: M.navBlue, textTransform: "uppercase", letterSpacing: "0.9px" }}>Target personas</label>
+                <span style={{ fontSize: 12, color: "#9aabb8" }}>Select all that apply</span>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 {PERSONAS.map(p => {
                   const on = selectedPersonas.includes(p.id);
                   return (
-                    <div key={p.id} className="checkbox-card" onClick={() => togglePersona(p.id)}
-                      style={{ padding: "11px 14px", border: `1.5px solid ${on ? M.midBlue : "#d5dfe8"}`, borderRadius: 8, background: on ? "#e8f2fb" : "#fff", display: "flex", alignItems: "flex-start", gap: 10 }}>
-                      <div style={{ width: 16, height: 16, borderRadius: 4, border: `2px solid ${on ? M.midBlue : "#cfd8e3"}`, background: on ? M.midBlue : "#fff", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", marginTop: 1 }}>
-                        {on && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                    <div key={p.id} className={`p-card${on ? " active" : ""}`} onClick={() => togglePersona(p.id)}>
+                      <div style={{ width: 18, height: 18, borderRadius: 5, border: `2px solid ${on ? M.midBlue : "#c8d4de"}`, background: on ? M.midBlue : "#fff", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", marginTop: 1, transition: "all 0.15s" }}>
+                        {on && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.8 7L9 1" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                       </div>
                       <div>
-                        <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: on ? M.midBlue : M.headText }}>{p.label}</p>
-                        <p style={{ margin: 0, fontSize: 11.5, color: "#7a8ea0" }}>{p.role}</p>
+                        <p style={{ margin: 0, fontSize: 13.5, fontWeight: 600, color: on ? M.midBlue : M.darkNavy }}>{p.label}</p>
+                        <p style={{ margin: "2px 0 0", fontSize: 12, color: "#7a8ea0" }}>{p.role}</p>
                       </div>
                     </div>
                   );
                 })}
               </div>
               {selectedPersonas.length > 1 && (
-                <p style={{ margin: "10px 0 0", fontSize: 12, color: M.teal, fontWeight: 500 }}>
-                  ✓ Scoring across {selectedPersonas.length} personas — audit will highlight gaps between them
-                </p>
+                <div style={{ marginTop: 12, padding: "8px 14px", background: "#eaf3fb", borderRadius: 8, fontSize: 12.5, color: M.midBlue, fontWeight: 500 }}>
+                  Scoring across {selectedPersonas.length} personas — the audit will highlight gaps
+                </div>
               )}
             </div>
 
             {/* Keywords */}
             <div style={card}>
-              <label style={lbl}>Focus keywords</label>
-              <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-                <input type="text" style={{ ...inp, flex: 1, padding: "9px 11px" }}
-                  placeholder="Type keywords, separate with commas…"
+              <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 12 }}>
+                <label style={{ fontSize: 11, fontWeight: 700, color: M.navBlue, textTransform: "uppercase", letterSpacing: "0.9px" }}>Focus keywords</label>
+                <span style={{ fontSize: 12, color: "#9aabb8" }}>Enter yours or let AI suggest</span>
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input type="text" style={{ flex: 1, padding: "10px 13px" }}
+                  placeholder="unified communications, cloud phone system…"
                   value={kwInput} onChange={e => setKwInput(e.target.value)}
                   onKeyDown={e => e.key === "Enter" && addManualKws()} />
                 <button onClick={addManualKws} disabled={!kwInput.trim()}
-                  style={{ padding: "9px 16px", background: M.midBlue, border: "none", borderRadius: 6, color: "#fff", fontSize: 12.5, fontWeight: 600, cursor: "pointer", opacity: kwInput.trim() ? 1 : 0.45 }}>
+                  style={{ padding: "10px 18px", background: M.midBlue, color: "#fff", fontSize: 13, fontWeight: 600, border: "none", borderRadius: 8, cursor: kwInput.trim() ? "pointer" : "not-allowed", opacity: kwInput.trim() ? 1 : 0.4, fontFamily: "inherit" }}>
                   Add
                 </button>
                 <button onClick={suggestKeywords} disabled={kwLoading || !content.trim()}
-                  style={{ padding: "9px 16px", background: M.teal, border: "none", borderRadius: 6, color: "#fff", fontSize: 12.5, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap", opacity: content.trim() ? 1 : 0.45 }}>
-                  {kwLoading ? <><Spin />Suggesting…</> : "✦ AI Suggest"}
+                  style={{ padding: "10px 18px", background: M.teal, color: "#fff", fontSize: 13, fontWeight: 600, border: "none", borderRadius: 8, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 7, whiteSpace: "nowrap", opacity: content.trim() ? 1 : 0.4 }}>
+                  {kwLoading ? <><Spin size={14} />Suggesting…</> : <><img src={ICONS.ai} alt="" width={15} height={15} />AI Suggest</>}
                 </button>
               </div>
 
               {activeKws.length > 0 && (
-                <div>
-                  <p style={{ fontSize: 11, fontWeight: 600, color: "#7a8ea0", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.6px" }}>Active — click to remove</p>
-                  {activeKws.map(kw => (
-                    <span key={kw} className="pill" onClick={() => toggleKw(kw)}
-                      style={{ background: suggestedKws.includes(kw) ? "#e3f4f2" : "#e8f2fb", color: suggestedKws.includes(kw) ? M.teal : M.midBlue, border: `1px solid ${suggestedKws.includes(kw) ? M.teal : M.midBlue}` }}>
-                      {kw} ×
-                    </span>
-                  ))}
+                <div style={{ marginTop: 12 }}>
+                  <p style={{ fontSize: 11, fontWeight: 600, color: "#8898a8", textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: 7 }}>
+                    {activeKws.length} keyword{activeKws.length > 1 ? "s" : ""} active — click to remove
+                  </p>
+                  {activeKws.map(kw => {
+                    const isSugg = suggestedKws.includes(kw);
+                    return (
+                      <span key={kw} className="kw-pill active-pill" onClick={() => toggleKw(kw)}
+                        style={{ background: isSugg ? M.teal : M.midBlue, color: "#fff", borderColor: isSugg ? M.teal : M.midBlue }}>
+                        {isSugg ? "✦ " : ""}{kw} ×
+                      </span>
+                    );
+                  })}
                   {suggestedKws.length > 0 && (
-                    <p style={{ margin: "6px 0 0", fontSize: 11, color: "#9aabb8" }}>
-                      <span style={{ color: M.teal }}>Teal</span> = AI suggested · <span style={{ color: M.midBlue }}>Blue</span> = manually added
+                    <p style={{ marginTop: 7, fontSize: 11.5, color: "#9aabb8" }}>
+                      <span style={{ color: M.teal, fontWeight: 600 }}>✦ Teal</span> = AI suggested · <span style={{ color: M.midBlue, fontWeight: 600 }}>Blue</span> = added by you
                     </p>
                   )}
                 </div>
               )}
             </div>
 
-            <button onClick={analyze} disabled={loading || content.trim().length < 10 || selectedPersonas.length === 0}
-              style={{ width: "100%", padding: 14, background: content.trim().length > 10 && selectedPersonas.length > 0 ? M.yellow : "#f5d980", border: "none", borderRadius: 6, color: "#000", fontSize: 13.5, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 4 }}>
-              {loading ? <><Spin dark />Analyzing Content…</> : "Analyze Content →"}
+            <button onClick={() => analyze()} disabled={!canRun} className="btn-primary"
+              style={{ width: "100%", padding: 15, fontSize: 14, background: canRun ? M.yellow : "#f5d980", color: "#000" }}>
+              Analyze Content →
             </button>
-            {selectedPersonas.length === 0 && (
-              <p style={{ fontSize: 12, color: "#9aabb8", textAlign: "center", marginTop: 6 }}>Select at least one persona to run the audit</p>
+            {!canRun && (
+              <p style={{ textAlign: "center", fontSize: 12, color: "#9aabb8", marginTop: 8 }}>
+                {content.length < 80 ? "Paste your content above" : "Select at least one persona"} to run the audit
+              </p>
             )}
-          </>
+          </div>
         )}
 
-        {/* Error */}
-        {error && (
-          <div style={{ background: "#fff5f5", border: "1px solid #fbc8c5", borderRadius: 6, padding: "11px 14px", fontSize: 13, color: M.red, marginTop: 14 }}>{error}</div>
-        )}
-
-        {/* Loading */}
-        {loading && (
-          <div style={{ ...card, textAlign: "center", padding: 52, marginTop: 20 }}>
-            <svg width="36" height="36" viewBox="0 0 36 36" fill="none"
-              style={{ animation: "spin 0.9s linear infinite", margin: "0 auto 14px", display: "block" }}>
-              <circle cx="18" cy="18" r="14" stroke={M.midBlue} strokeWidth="3" strokeDasharray="62" strokeDashoffset="22" strokeLinecap="round" opacity="0.7" />
-            </svg>
-            <p style={{ margin: "0 0 5px", fontSize: 14, fontWeight: 600, color: M.headText }}>Running your content audit…</p>
-            <p style={{ margin: 0, fontSize: 12, color: "#8898a8" }}>
-              Scoring across {selectedPersonas.length} persona{selectedPersonas.length > 1 ? "s" : ""}{activeKws.length ? `, ${activeKws.length} keywords` : ""}, 4 dimensions
+        {/* ══ LOADING ══ */}
+        {view === "loading" && (
+          <div className="fade-up" style={{ ...card, textAlign: "center", padding: "72px 32px" }}>
+            <div style={{ width: 56, height: 56, margin: "0 auto 18px" }}>
+              <img src={ICONS.ai} alt="" width={56} height={56} style={{ animation: "spin 3s linear infinite" }} />
+            </div>
+            <p style={{ fontSize: 18, fontWeight: 600, color: M.darkNavy, marginBottom: 8 }}>Analyzing your content…</p>
+            <p style={{ fontSize: 13.5, color: "#8898a8" }}>
+              Scoring across {selectedPersonas.length} persona{selectedPersonas.length > 1 ? "s" : ""}
+              {activeKws.length > 0 ? `, ${activeKws.length} keyword${activeKws.length > 1 ? "s" : ""}` : ""} and 4 dimensions
             </p>
           </div>
         )}
 
-        {/* ── Results ── */}
-        {results && (() => {
+        {/* ══ RESULTS ══ */}
+        {view === "results" && results && (() => {
           const grade = getGrade(results.overall_score);
           return (
-            <div className="fade-in">
+            <div className="fade-up">
 
               {/* Score banner */}
-              <div style={{ background: `linear-gradient(135deg, ${M.darkNavy} 0%, #1d3f6e 55%, #2d1852 100%)`, borderRadius: 10, padding: "26px 30px", marginBottom: 16, boxShadow: "0 4px 20px rgba(21,50,95,0.2)" }}>
-                <p style={{ margin: "0 0 10px", fontSize: 10.5, fontWeight: 700, color: M.yellow, textTransform: "uppercase", letterSpacing: "1px" }}>Audit Result</p>
-                <div style={{ display: "flex", alignItems: "center", gap: 24, flexWrap: "wrap" }}>
-                  <div>
-                    <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-                      <span style={{ fontSize: 60, fontWeight: 700, color: grade.color, lineHeight: 1 }}>{grade.letter}</span>
-                      <span style={{ fontSize: 30, fontWeight: 700, color: "#fff" }}>
-                        {Math.round(results.overall_score)}
-                        <span style={{ fontSize: 14, color: "rgba(255,255,255,0.4)", fontWeight: 400 }}>/100</span>
-                      </span>
+              <div style={{ background: `linear-gradient(135deg, ${M.darkNavy} 0%, #1b3f6e 50%, #2c1a50 100%)`, borderRadius: 14, padding: "30px 34px", marginBottom: 18, boxShadow: "0 6px 28px rgba(21,50,95,0.22)" }}>
+                <p style={{ margin: "0 0 16px", fontSize: 11, fontWeight: 700, color: M.yellow, textTransform: "uppercase", letterSpacing: "1.2px" }}>Audit Result</p>
+                <div style={{ display: "flex", alignItems: "center", gap: 28, flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+                    <div style={{ textAlign: "center" }}>
+                      <div style={{ fontSize: 68, fontWeight: 700, color: grade.color, lineHeight: 1 }}>{grade.letter}</div>
+                      <div style={{ fontSize: 11.5, fontWeight: 600, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>{grade.label}</div>
                     </div>
-                    <p style={{ margin: "6px 0 0", fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
-                      {selectedPersonas.map(id => PERSONAS.find(p => p.id === id)?.label).join(" · ")}
-                    </p>
-                    {activeKws.length > 0 && (
-                      <p style={{ margin: "3px 0 0", fontSize: 11.5, color: "rgba(255,255,255,0.3)" }}>
-                        {activeKws.join(", ")}
-                      </p>
-                    )}
+                    <div>
+                      <div style={{ fontSize: 36, fontWeight: 700, color: "#fff", lineHeight: 1 }}>
+                        {Math.round(results.overall_score)}<span style={{ fontSize: 17, color: "rgba(255,255,255,0.35)", fontWeight: 400 }}>/100</span>
+                      </div>
+                      <div style={{ fontSize: 12.5, color: "rgba(255,255,255,0.45)", marginTop: 6 }}>
+                        {selectedPersonas.map(id => PERSONAS.find(p => p.id === id)?.label).join(" · ")}
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ marginLeft: "auto", display: "flex", gap: 18, flexWrap: "wrap" }}>
+
+                  {/* Keywords highlight */}
+                  {activeKws.length > 0 && (
+                    <div style={{ borderLeft: "1px solid rgba(255,255,255,0.12)", paddingLeft: 24 }}>
+                      <p style={{ margin: "0 0 8px", fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.8px" }}>Scored against</p>
+                      <div>
+                        {activeKws.map(kw => (
+                          <span key={kw} style={{ display: "inline-block", background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 100, padding: "3px 11px", fontSize: 12, color: "#fff", margin: "2px 3px", fontWeight: 500 }}>
+                            {kw}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Mini rings */}
+                  <div style={{ marginLeft: "auto", display: "flex", gap: 22, flexWrap: "wrap" }}>
                     {DIMS.map(d => (
                       <div key={d.id} style={{ textAlign: "center" }}>
-                        <ScoreRing score={results.dimensions[d.id]?.score ?? 0} color={d.id === "cro" ? M.yellow : d.color} />
-                        <p style={{ margin: "4px 0 0", fontSize: 9.5, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.4px" }}>{d.label}</p>
+                        <ScoreRing score={results.dimensions[d.id]?.score ?? 0} color={d.id === "cro" ? M.yellow : d.color} size={70} />
+                        <div style={{ fontSize: 9.5, color: "rgba(255,255,255,0.38)", textTransform: "uppercase", letterSpacing: "0.5px", marginTop: 4 }}>{d.label}</div>
                       </div>
                     ))}
                   </div>
                 </div>
               </div>
 
-              {/* Dimension cards */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+              {/* Dimension cards — checkboxes on fixes inline */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 18 }}>
                 {DIMS.map(d => {
                   const dim = results.dimensions[d.id];
                   if (!dim) return null;
-                  const col = d.id === "cro" ? "#b07d00" : d.color;
+                  const col = d.id === "cro" ? "#9a6b00" : d.color;
+                  const dimChecked = (results.dimensions[d.id]?.fixes || []).filter(f => checkedFixes[f]).length;
                   return (
-                    <div key={d.id} style={{ background: "#fff", border: "1px solid #d5dfe8", borderTop: `3px solid ${col}`, borderRadius: 10, padding: "20px 22px", boxShadow: "0 2px 8px rgba(21,50,95,0.05)" }}>
-                      <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 12 }}>
-                        <div style={{ width: 36, height: 36, borderRadius: 7, background: d.light, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                          <span style={{ fontSize: 10, fontWeight: 700, color: col }}>{d.abbr}</span>
-                        </div>
+                    <div key={d.id} style={{ background: "#fff", border: "1.5px solid #dae1ea", borderRadius: 12, overflow: "hidden", boxShadow: "0 2px 10px rgba(21,50,95,0.05)" }}>
+                      {/* Card header */}
+                      <div style={{ background: d.bg, padding: "16px 20px", borderBottom: `2px solid ${col}22`, display: "flex", alignItems: "center", gap: 12 }}>
+                        <img src={ICONS[d.id]} alt="" width={46} height={46} />
                         <div style={{ flex: 1 }}>
-                          <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 3 }}>
-                            <span style={{ fontSize: 13.5, fontWeight: 700, color: M.headText }}>{d.label}</span>
-                            <span style={{ fontSize: 20, fontWeight: 700, color: col, lineHeight: 1 }}>{Math.round(dim.score)}</span>
+                          <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                            <span style={{ fontSize: 15, fontWeight: 700, color: M.darkNavy }}>{d.label}</span>
+                            <span style={{ fontSize: 22, fontWeight: 700, color: col, lineHeight: 1 }}>{Math.round(dim.score)}</span>
                           </div>
-                          <p style={{ margin: 0, fontSize: 12, color: "#7a8ea0", lineHeight: 1.45 }}>{dim.summary}</p>
+                          <p style={{ margin: "2px 0 0", fontSize: 12, color: "#7a8ea0" }}>{dim.summary}</p>
                         </div>
                       </div>
 
-                      {/* Progress bar */}
-                      <div style={{ height: 4, background: "#edf2f7", borderRadius: 2, marginBottom: 14, overflow: "hidden" }}>
-                        <div style={{ height: "100%", width: `${Math.round(dim.score)}%`, background: col, borderRadius: 2, transition: "width 0.9s ease" }} />
-                      </div>
-
-                      {/* Per-persona breakdown */}
-                      {d.id === "persona" && dim.persona_breakdown && (
-                        <div style={{ background: "#f8fafc", borderRadius: 6, padding: "10px 12px", marginBottom: 14 }}>
-                          <p style={{ margin: "0 0 8px", fontSize: 10, fontWeight: 700, color: M.navBlue, textTransform: "uppercase", letterSpacing: "0.7px" }}>Per-persona alignment</p>
-                          {dim.persona_breakdown.map((pb, i) => (
-                            <div key={i} style={{ marginBottom: i < dim.persona_breakdown.length - 1 ? 8 : 0 }}>
-                              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
-                                <span style={{ fontSize: 12, fontWeight: 600, color: M.headText }}>{pb.name}</span>
-                                <span style={{ fontSize: 12, fontWeight: 700, color: pb.alignment >= 70 ? M.teal : pb.alignment >= 50 ? "#c49300" : M.red }}>{pb.alignment}%</span>
-                              </div>
-                              <div style={{ height: 3, background: "#e2e8f0", borderRadius: 2, marginBottom: 2, overflow: "hidden" }}>
-                                <div style={{ height: "100%", width: `${pb.alignment}%`, background: pb.alignment >= 70 ? M.teal : pb.alignment >= 50 ? "#c49300" : M.red, borderRadius: 2 }} />
-                              </div>
-                              {pb.gap && <p style={{ margin: 0, fontSize: 11, color: "#9aabb8" }}>Gap: {pb.gap}</p>}
-                            </div>
-                          ))}
+                      <div style={{ padding: "16px 20px" }}>
+                        {/* Score bar */}
+                        <div style={{ height: 5, background: "#edf2f7", borderRadius: 3, marginBottom: 14, overflow: "hidden" }}>
+                          <div className="score-bar" style={{ height: "100%", width: `${Math.round(dim.score)}%`, background: `linear-gradient(90deg, ${col}88, ${col})`, borderRadius: 3 }} />
                         </div>
-                      )}
 
-                      <p style={{ margin: "0 0 6px", fontSize: 10, fontWeight: 700, color: M.navBlue, textTransform: "uppercase", letterSpacing: "0.8px" }}>Top fixes</p>
-                      <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-                        {dim.fixes.map((fix, i) => (
-                          <li key={i} style={{ fontSize: 12.5, color: M.bodyText, lineHeight: 1.55, padding: "6px 0 6px 15px", borderTop: i === 0 ? "none" : "1px solid #f0f4f8", position: "relative" }}>
-                            <span style={{ position: "absolute", left: 3, top: 11, width: 5, height: 5, borderRadius: "50%", background: col, display: "block" }} />
-                            {fix}
-                          </li>
-                        ))}
-                      </ul>
+                        {/* Per-persona breakdown */}
+                        {d.id === "persona" && dim.persona_breakdown?.length > 0 && (
+                          <div style={{ background: "#f8fafc", borderRadius: 8, padding: "11px 13px", marginBottom: 14 }}>
+                            <p style={{ margin: "0 0 9px", fontSize: 10.5, fontWeight: 700, color: M.navBlue, textTransform: "uppercase", letterSpacing: "0.7px" }}>Per-persona alignment</p>
+                            {dim.persona_breakdown.map((pb, i) => {
+                              const bc = pb.alignment >= 70 ? M.teal : pb.alignment >= 50 ? "#c49300" : M.red;
+                              return (
+                                <div key={i} style={{ marginBottom: i < dim.persona_breakdown.length - 1 ? 9 : 0 }}>
+                                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+                                    <span style={{ fontSize: 12.5, fontWeight: 600, color: M.darkNavy }}>{pb.name}</span>
+                                    <span style={{ fontSize: 12.5, fontWeight: 700, color: bc }}>{pb.alignment}%</span>
+                                  </div>
+                                  <div style={{ height: 4, background: "#e2e8f0", borderRadius: 2, overflow: "hidden", marginBottom: 2 }}>
+                                    <div style={{ height: "100%", width: `${pb.alignment}%`, background: bc, borderRadius: 2, transition: "width 0.9s ease" }} />
+                                  </div>
+                                  {pb.gap && <p style={{ margin: 0, fontSize: 11, color: "#9aabb8" }}>Gap: {pb.gap}</p>}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {/* Fixes — with inline checkboxes */}
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                          <p style={{ margin: 0, fontSize: 10.5, fontWeight: 700, color: M.navBlue, textTransform: "uppercase", letterSpacing: "0.8px" }}>Top fixes</p>
+                          {dimChecked > 0 && (
+                            <span style={{ fontSize: 11, fontWeight: 600, color: M.midBlue, background: "#eaf3fb", borderRadius: 20, padding: "2px 8px" }}>{dimChecked} selected</span>
+                          )}
+                        </div>
+                        <div>
+                          {dim.fixes.map((fix, i) => {
+                            const isChecked = !!checkedFixes[fix];
+                            return (
+                              <label key={i} className={`fix-row${isChecked ? " checked" : ""}`}>
+                                <input type="checkbox" checked={isChecked}
+                                  onChange={e => setCheckedFixes(prev => ({ ...prev, [fix]: e.target.checked }))} />
+                                <span style={{ fontSize: 13, color: isChecked ? M.midBlue : "#444", lineHeight: 1.5, fontWeight: isChecked ? 500 : 400 }}>{fix}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
                     </div>
                   );
                 })}
               </div>
 
-              {/* Regenerate */}
-              <div style={card}>
-                <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 700, color: M.headText }}>Regenerate with selected fixes</p>
-                <p style={{ margin: "0 0 16px", fontSize: 12.5, color: "#7a8ea0" }}>Check the fixes you want applied, then regenerate your content.</p>
-
-                {allFixes.map(({ fix, dim }, i) => {
-                  const col = dim.id === "cro" ? "#b07d00" : dim.color;
-                  return (
-                    <label key={i} className="fix-row">
-                      <input type="checkbox" checked={!!checkedFixes[fix]}
-                        onChange={e => setCheckedFixes(prev => ({ ...prev, [fix]: e.target.checked }))} />
-                      <div>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: col, textTransform: "uppercase", letterSpacing: "0.5px", marginRight: 6 }}>{dim.label}</span>
-                        <span style={{ fontSize: 13, color: M.bodyText }}>{fix}</span>
-                      </div>
-                    </label>
-                  );
-                })}
-
-                <button onClick={regenerate} disabled={regenLoading || selectedFixCount === 0}
-                  style={{ marginTop: 16, padding: "11px 22px", background: selectedFixCount > 0 ? M.midBlue : "#b0c4d8", border: "none", borderRadius: 6, color: "#fff", fontSize: 13, fontWeight: 700, cursor: selectedFixCount > 0 ? "pointer" : "not-allowed", display: "flex", alignItems: "center", gap: 8 }}>
-                  {regenLoading ? <><Spin />Regenerating…</> : `Regenerate with ${selectedFixCount} fix${selectedFixCount !== 1 ? "es" : ""} →`}
-                </button>
-
-                {improved && (
-                  <div className="fade-in">
-                    <p style={{ margin: "20px 0 4px", fontSize: 13, fontWeight: 700, color: M.headText }}>Content comparison</p>
-                    <DiffView original={content} improved={improved} />
+              {/* ── Improved content + re-analysis ── */}
+              {(improved || regenLoading) && (
+                <div style={{ ...card, marginBottom: 18 }} className="fade-up">
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <img src={ICONS.ai} alt="" width={26} height={26} />
+                      <span style={{ fontSize: 15, fontWeight: 700, color: M.darkNavy }}>Improved content</span>
+                    </div>
+                    {improved && !reanalysisResults && (
+                      <button onClick={reanalyzeImproved} disabled={reanalyzing}
+                        style={{ padding: "8px 18px", background: reanalyzing ? "#b0c4d8" : M.teal, color: "#fff", border: "none", borderRadius: 8, fontSize: 12.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 7, textTransform: "uppercase", letterSpacing: "0.6px" }}>
+                        {reanalyzing ? <><Spin size={13} />Testing…</> : "Test improved version →"}
+                      </button>
+                    )}
                   </div>
-                )}
-              </div>
 
-              <p style={{ margin: "10px 0 32px", fontSize: 11, color: "#9aabb8", textAlign: "center" }}>
-                Scores generated by Claude AI · Internal tool · Mitel Marketing Intelligence Beta
+                  {regenLoading && (
+                    <div style={{ textAlign: "center", padding: "32px 0", color: "#8898a8", fontSize: 13.5 }}>
+                      <Spin dark size={20} />
+                      <p style={{ marginTop: 10 }}>Rewriting your content…</p>
+                    </div>
+                  )}
+
+                  {improved && !reanalysisResults && (
+                    <div style={{ background: "#f8fafc", border: "1.5px solid #dae1ea", borderRadius: 10, padding: 18 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: M.navBlue, textTransform: "uppercase", letterSpacing: "0.7px" }}>Rewritten copy</span>
+                        <CopyButton text={improved} />
+                      </div>
+                      <p style={{ fontSize: 13.5, color: "#333", lineHeight: 1.75, whiteSpace: "pre-wrap" }}>{improved}</p>
+                    </div>
+                  )}
+
+                  {/* Side-by-side comparison after re-analysis */}
+                  {improved && reanalysisResults && (
+                    <div>
+                      {/* Score comparison */}
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
+                        <div style={{ background: "#f8fafc", border: "1.5px solid #dae1ea", borderRadius: 10, padding: 18 }}>
+                          <ResultsPanel results={results} label="Original" accentColor="#9aabb8" />
+                        </div>
+                        <div style={{ background: "#f0fdf4", border: `1.5px solid ${M.teal}44`, borderRadius: 10, padding: 18 }}>
+                          <ResultsPanel results={reanalysisResults} label="Improved" accentColor={M.teal} />
+                        </div>
+                      </div>
+
+                      {/* Delta row */}
+                      <div style={{ background: "#eaf3fb", border: "1.5px solid #b8d4ee", borderRadius: 10, padding: "12px 18px", marginBottom: 16, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 12.5, fontWeight: 600, color: M.darkNavy }}>Overall change:</span>
+                        <ScoreDelta before={results.overall_score} after={reanalysisResults.overall_score} />
+                        {DIMS.map(d => (
+                          <span key={d.id} style={{ fontSize: 12, color: "#7a8ea0" }}>
+                            {d.label}: <ScoreDelta before={results.dimensions[d.id]?.score ?? 0} after={reanalysisResults.dimensions[d.id]?.score ?? 0} />
+                          </span>
+                        ))}
+                      </div>
+
+                      {/* Text comparison */}
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                        {[
+                          { label: "Original", text: content, headerBg: "#fff0f0", headerColor: "#b91c1c", borderColor: "#fca5a5" },
+                          { label: "Improved", text: improved, headerBg: "#f0fdf4", headerColor: "#166534", borderColor: "#86efac" },
+                        ].map(({ label, text, headerBg, headerColor, borderColor }) => (
+                          <div key={label} style={{ border: `1.5px solid ${borderColor}`, borderRadius: 10, overflow: "hidden" }}>
+                            <div style={{ background: headerBg, padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `1px solid ${borderColor}` }}>
+                              <span style={{ fontSize: 11, fontWeight: 700, color: headerColor, textTransform: "uppercase", letterSpacing: "0.8px" }}>{label}</span>
+                              <CopyButton text={text} />
+                            </div>
+                            <div style={{ padding: 16, background: "#fff" }}>
+                              <p style={{ fontSize: 13.5, color: "#333", lineHeight: 1.75, whiteSpace: "pre-wrap" }}>{text}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <p style={{ marginTop: 16, textAlign: "center", fontSize: 11.5, color: "#b0bcca" }}>
+                Scores generated by Claude AI · Mitel Marketing Intelligence Beta · Internal use only
               </p>
             </div>
           );
         })()}
+
+        {/* Error */}
+        {error && (
+          <div style={{ background: "#fff5f5", border: "1.5px solid #fca5a5", borderRadius: 10, padding: "12px 16px", fontSize: 13.5, color: M.red, marginTop: 14, display: "flex", gap: 10, alignItems: "center" }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke={M.red} strokeWidth="1.5"/><path d="M8 5v3.5M8 10.5v.1" stroke={M.red} strokeWidth="1.5" strokeLinecap="round"/></svg>
+            {error}
+          </div>
+        )}
       </div>
+
+      {/* ══ STICKY REGEN BAR ══ */}
+      {selectedFixCount > 0 && view === "results" && (
+        <div className="regen-bar">
+          <div>
+            <p style={{ margin: 0, fontSize: 13.5, fontWeight: 600, color: "#fff" }}>
+              {selectedFixCount} fix{selectedFixCount > 1 ? "es" : ""} selected
+            </p>
+            <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.5)" }}>Claude will rewrite your content applying these improvements</p>
+          </div>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <button onClick={() => setCheckedFixes({})}
+              style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.3)", borderRadius: 7, color: "rgba(255,255,255,0.6)", fontSize: 12, fontWeight: 600, padding: "8px 14px", cursor: "pointer", fontFamily: "inherit" }}>
+              Clear
+            </button>
+            <button onClick={regenerate} disabled={regenLoading} className="btn-primary"
+              style={{ padding: "10px 24px", background: regenLoading ? "#c49300" : M.yellow, color: "#000", fontSize: 13 }}>
+              {regenLoading ? <><Spin dark size={14} />Regenerating…</> : `Regenerate content →`}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
