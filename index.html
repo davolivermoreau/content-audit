@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Content Audit Dashboard — Mitel</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: #f0f4f8; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .fade-in { animation: fadeIn 0.3s ease forwards; }
+    textarea:focus, input:focus { outline: none; border-color: #0073d0 !important; box-shadow: 0 0 0 3px rgba(0,115,208,0.1); }
+    button:not(:disabled):hover { filter: brightness(0.94); }
+    button:not(:disabled):active { transform: scale(0.99); }
+    ::placeholder { color: #aab4be; }
+    .checkbox-card { cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+    .checkbox-card:hover { border-color: #0073d0 !important; }
+    .pill { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; margin: 3px; cursor: pointer; transition: filter 0.15s; }
+    .pill:hover { filter: brightness(0.9); }
+    .fix-row { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-top: 1px solid #f0f4f8; cursor: pointer; }
+    .fix-row:first-child { border-top: none; }
+    .fix-row input[type=checkbox] { margin-top: 2px; accent-color: #0073d0; width: 14px; height: 14px; flex-shrink: 0; cursor: pointer; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState } = React;
+
+/* ── Brand tokens ── */
+const M = {
+  darkNavy: "#15325f", navBlue: "#2E5C8A", midBlue: "#0073d0",
+  yellow: "#FDB913", purple: "#812cc4", teal: "#009688",
+  red: "#ec3831", bodyText: "#333333", headText: "#15325f",
+};
+
+const DIMS = [
+  { id: "tone",    label: "Tone & Brand",  color: M.midBlue,  light: "#e8f2fb", abbr: "T&B" },
+  { id: "seo",     label: "SEO / AEO",     color: M.teal,     light: "#e3f4f2", abbr: "SEO" },
+  { id: "persona", label: "Persona Fit",   color: M.purple,   light: "#f2eaf9", abbr: "PER" },
+  { id: "cro",     label: "CRO Readiness", color: "#b07d00",  light: "#fdf5e0", abbr: "CRO" },
+];
+
+const PERSONAS = [
+  { id: "it_dm",    label: "IT Decision Maker",       role: "CIO / IT Director",        pain: "reliability, security, TCO, vendor consolidation" },
+  { id: "biz_dm",   label: "Business Decision Maker", role: "CEO / CFO / COO",           pain: "employee productivity, cost control, business continuity" },
+  { id: "it_admin", label: "IT Admin / Engineer",     role: "Systems administrator",     pain: "ease of management, uptime, integration, minimal maintenance" },
+  { id: "end_user", label: "End User",                role: "Daily communications user", pain: "ease of use, call quality, mobile access, consistency" },
+  { id: "partner",  label: "Channel Partner",         role: "Reseller / MSP / VAR",      pain: "margins, competitive positioning, customer retention" },
+];
+
+const getGrade = s => {
+  if (s >= 90) return { letter: "A", color: M.teal };
+  if (s >= 80) return { letter: "B", color: M.midBlue };
+  if (s >= 70) return { letter: "C", color: "#c49300" };
+  if (s >= 60) return { letter: "D", color: "#d4620a" };
+  return { letter: "F", color: M.red };
+};
+
+/* ── Components ── */
+const ScoreRing = ({ score, color, size = 68 }) => {
+  const r = 26, circ = 2 * Math.PI * r;
+  const offset = circ - (Math.round(score) / 100) * circ;
+  return (
+    <svg width={size} height={size} viewBox="0 0 68 68">
+      <circle cx="34" cy="34" r={r} fill="none" stroke="rgba(0,0,0,0.07)" strokeWidth="5" />
+      <circle cx="34" cy="34" r={r} fill="none" stroke={color} strokeWidth="5"
+        strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round"
+        transform="rotate(-90 34 34)"
+        style={{ transition: "stroke-dashoffset 0.9s cubic-bezier(.34,1.56,.64,1)" }} />
+      <text x="34" y="38" textAnchor="middle" fill={color} fontSize="13" fontWeight="700"
+        fontFamily="Inter, system-ui">{Math.round(score)}</text>
+    </svg>
+  );
+};
+
+const Spin = ({ dark }) => (
+  <svg width="15" height="15" viewBox="0 0 16 16" fill="none"
+    style={{ animation: "spin 0.8s linear infinite", flexShrink: 0 }}>
+    <circle cx="8" cy="8" r="6" stroke={dark ? "#333" : "#fff"} strokeWidth="2"
+      strokeDasharray="28" strokeDashoffset="10" strokeLinecap="round" opacity="0.45" />
+  </svg>
+);
+
+const MitelMark = () => (
+  <div style={{ width: 34, height: 34, background: M.yellow, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+    <svg width="20" height="16" viewBox="0 0 20 16" fill="none">
+      <rect x="0"   y="0" width="5" height="16" rx="1" fill={M.darkNavy} />
+      <rect x="7.5" y="0" width="5" height="16" rx="1" fill={M.darkNavy} />
+      <rect x="15"  y="0" width="5" height="16" rx="1" fill={M.darkNavy} />
+    </svg>
+  </div>
+);
+
+const DiffView = ({ original, improved }) => (
+  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 16 }}>
+    {[
+      { label: "Original", text: original, bg: "#fff5f5", border: "#fecaca", tag: "#ef4444" },
+      { label: "Improved", text: improved,  bg: "#f0fdf4", border: "#bbf7d0", tag: "#16a34a" },
+    ].map(({ label, text, bg, border, tag }) => (
+      <div key={label} style={{ background: bg, border: `1px solid ${border}`, borderRadius: 8, padding: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: tag, textTransform: "uppercase", letterSpacing: "0.7px" }}>{label}</span>
+          <button onClick={() => navigator.clipboard?.writeText(text)}
+            style={{ fontSize: 11, color: M.midBlue, background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>
+            Copy
+          </button>
+        </div>
+        <p style={{ fontSize: 13, color: M.bodyText, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{text}</p>
+      </div>
+    ))}
+  </div>
+);
+
+/* ── API helpers — all calls go through server.py ── */
+async function post(endpoint, body) {
+  const r = await fetch(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const d = await r.json();
+  if (d.error) throw new Error(d.error);
+  return d.text;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════ */
+function App() {
+  const [content,          setContent]          = useState("");
+  const [selectedPersonas, setSelectedPersonas] = useState([]);
+  const [kwInput,          setKwInput]          = useState("");
+  const [suggestedKws,     setSuggestedKws]     = useState([]);
+  const [activeKws,        setActiveKws]        = useState([]);
+  const [kwLoading,        setKwLoading]        = useState(false);
+  const [loading,          setLoading]          = useState(false);
+  const [results,          setResults]          = useState(null);
+  const [error,            setError]            = useState(null);
+  const [checkedFixes,     setCheckedFixes]     = useState({});
+  const [regenLoading,     setRegenLoading]     = useState(false);
+  const [improved,         setImproved]         = useState(null);
+
+  const togglePersona = id =>
+    setSelectedPersonas(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
+
+  const toggleKw = kw =>
+    setActiveKws(ks => ks.includes(kw) ? ks.filter(k => k !== kw) : [...ks, kw]);
+
+  const addManualKws = () => {
+    const kws = kwInput.split(",").map(k => k.trim()).filter(Boolean);
+    setActiveKws(prev => [...new Set([...prev, ...kws])]);
+    setKwInput("");
+  };
+
+  const suggestKeywords = async () => {
+    if (!content.trim()) return;
+    setKwLoading(true);
+    try {
+      const text = await post("/api/keywords", { content, existing: activeKws });
+      const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
+      setSuggestedKws(parsed);
+      setActiveKws(prev => [...new Set([...prev, ...parsed])]);
+    } catch (e) { setError("Keyword suggestion failed — try again."); }
+    finally { setKwLoading(false); }
+  };
+
+  const analyze = async () => {
+    if (content.trim().length < 80) { setError("Paste at least 80 characters of content."); return; }
+    if (selectedPersonas.length === 0) { setError("Select at least one target persona."); return; }
+    setError(null); setLoading(true); setResults(null); setImproved(null); setCheckedFixes({});
+    try {
+      const personas = selectedPersonas.map(id => PERSONAS.find(p => p.id === id));
+      const text = await post("/api/analyze", { content, personas, keywords: activeKws });
+      setResults(JSON.parse(text.replace(/```json|```/g, "").trim()));
+    } catch (e) { setError(e.message || "Analysis failed — please try again."); }
+    finally { setLoading(false); }
+  };
+
+  const regenerate = async () => {
+    const fixes = Object.entries(checkedFixes).filter(([, v]) => v).map(([k]) => k);
+    if (!fixes.length) { setError("Select at least one fix to apply."); return; }
+    setRegenLoading(true); setImproved(null); setError(null);
+    try {
+      const text = await post("/api/regenerate", { content, fixes });
+      setImproved(text.trim());
+    } catch (e) { setError(e.message || "Regeneration failed."); }
+    finally { setRegenLoading(false); }
+  };
+
+  const reset = () => {
+    setResults(null); setContent(""); setActiveKws([]); setSuggestedKws([]);
+    setKwInput(""); setError(null); setImproved(null); setCheckedFixes({}); setSelectedPersonas([]);
+  };
+
+  const allFixes = results
+    ? DIMS.flatMap(d => (results.dimensions[d.id]?.fixes || []).map(f => ({ fix: f, dim: d })))
+    : [];
+  const selectedFixCount = Object.values(checkedFixes).filter(Boolean).length;
+
+  /* Shared styles */
+  const inp  = { background: "#fff", border: "1px solid #cfd8e3", borderRadius: 6, fontSize: 13, fontFamily: "Inter, system-ui", color: M.bodyText };
+  const lbl  = { fontSize: 11, fontWeight: 700, color: M.navBlue, textTransform: "uppercase", letterSpacing: "0.8px", display: "block", marginBottom: 7 };
+  const card = { background: "#fff", border: "1px solid #d5dfe8", borderRadius: 10, padding: 24, boxShadow: "0 2px 8px rgba(21,50,95,0.06)", marginBottom: 16 };
+
+  return (
+    <div style={{ minHeight: "100vh", background: "#f0f4f8", fontFamily: "Inter, system-ui, sans-serif" }}>
+
+      {/* ── Utility bar ── */}
+      <div style={{ background: M.darkNavy, height: 36, padding: "0 28px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <span style={{ fontSize: 11.5, color: "rgba(255,255,255,0.55)" }}>Mitel Marketing Intelligence</span>
+        <span style={{ fontSize: 10.5, fontWeight: 700, color: M.yellow, textTransform: "uppercase", letterSpacing: "0.9px" }}>Beta · Internal Use Only</span>
+      </div>
+
+      {/* ── Nav ── */}
+      <div style={{ background: M.navBlue, height: 60, padding: "0 28px", display: "flex", alignItems: "center", gap: 14, borderBottom: `3px solid ${M.yellow}` }}>
+        <MitelMark />
+        <span style={{ fontSize: 18, fontWeight: 700, color: "#fff", letterSpacing: "-0.3px" }}>mitel</span>
+        <div style={{ width: 1, height: 22, background: "rgba(255,255,255,0.2)", margin: "0 4px" }} />
+        <div>
+          <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#fff", lineHeight: 1.2 }}>Content Audit Dashboard</p>
+          <p style={{ margin: 0, fontSize: 11, color: "rgba(255,255,255,0.5)" }}>Powered by Claude AI</p>
+        </div>
+        {results && (
+          <button onClick={reset} style={{ marginLeft: "auto", padding: "7px 16px", background: "transparent", border: "1px solid rgba(255,255,255,0.3)", borderRadius: 4, color: "#fff", fontSize: 11.5, fontWeight: 700, cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.6px" }}>
+            ← New Audit
+          </button>
+        )}
+      </div>
+
+      <div style={{ maxWidth: 920, margin: "0 auto", padding: "36px 28px" }}>
+
+        {/* ── Input form ── */}
+        {!results && (
+          <>
+            <p style={{ margin: "0 0 5px", fontSize: 11.5, fontWeight: 700, color: M.yellow, textTransform: "uppercase", letterSpacing: "1px" }}>Marketing Content Analysis</p>
+            <h1 style={{ margin: "0 0 24px", fontSize: 24, fontWeight: 700, color: M.headText }}>Score your content before it goes live</h1>
+
+            {/* Content */}
+            <div style={card}>
+              <label style={lbl}>Content to audit</label>
+              <textarea style={{ ...inp, width: "100%", minHeight: 150, padding: "12px 14px", fontSize: 13.5, lineHeight: 1.65, resize: "vertical" }}
+                placeholder="Paste your web page copy, email, blog post, or any marketing content here…"
+                value={content} onChange={e => setContent(e.target.value)} />
+            </div>
+
+            {/* Personas */}
+            <div style={card}>
+              <label style={lbl}>Target personas <span style={{ color: "#9aabb8", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(select all that apply)</span></label>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                {PERSONAS.map(p => {
+                  const on = selectedPersonas.includes(p.id);
+                  return (
+                    <div key={p.id} className="checkbox-card" onClick={() => togglePersona(p.id)}
+                      style={{ padding: "11px 14px", border: `1.5px solid ${on ? M.midBlue : "#d5dfe8"}`, borderRadius: 8, background: on ? "#e8f2fb" : "#fff", display: "flex", alignItems: "flex-start", gap: 10 }}>
+                      <div style={{ width: 16, height: 16, borderRadius: 4, border: `2px solid ${on ? M.midBlue : "#cfd8e3"}`, background: on ? M.midBlue : "#fff", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", marginTop: 1 }}>
+                        {on && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                      </div>
+                      <div>
+                        <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: on ? M.midBlue : M.headText }}>{p.label}</p>
+                        <p style={{ margin: 0, fontSize: 11.5, color: "#7a8ea0" }}>{p.role}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {selectedPersonas.length > 1 && (
+                <p style={{ margin: "10px 0 0", fontSize: 12, color: M.teal, fontWeight: 500 }}>
+                  ✓ Scoring across {selectedPersonas.length} personas — audit will highlight gaps between them
+                </p>
+              )}
+            </div>
+
+            {/* Keywords */}
+            <div style={card}>
+              <label style={lbl}>Focus keywords</label>
+              <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                <input type="text" style={{ ...inp, flex: 1, padding: "9px 11px" }}
+                  placeholder="Type keywords, separate with commas…"
+                  value={kwInput} onChange={e => setKwInput(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && addManualKws()} />
+                <button onClick={addManualKws} disabled={!kwInput.trim()}
+                  style={{ padding: "9px 16px", background: M.midBlue, border: "none", borderRadius: 6, color: "#fff", fontSize: 12.5, fontWeight: 600, cursor: "pointer", opacity: kwInput.trim() ? 1 : 0.45 }}>
+                  Add
+                </button>
+                <button onClick={suggestKeywords} disabled={kwLoading || !content.trim()}
+                  style={{ padding: "9px 16px", background: M.teal, border: "none", borderRadius: 6, color: "#fff", fontSize: 12.5, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap", opacity: content.trim() ? 1 : 0.45 }}>
+                  {kwLoading ? <><Spin />Suggesting…</> : "✦ AI Suggest"}
+                </button>
+              </div>
+
+              {activeKws.length > 0 && (
+                <div>
+                  <p style={{ fontSize: 11, fontWeight: 600, color: "#7a8ea0", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.6px" }}>Active — click to remove</p>
+                  {activeKws.map(kw => (
+                    <span key={kw} className="pill" onClick={() => toggleKw(kw)}
+                      style={{ background: suggestedKws.includes(kw) ? "#e3f4f2" : "#e8f2fb", color: suggestedKws.includes(kw) ? M.teal : M.midBlue, border: `1px solid ${suggestedKws.includes(kw) ? M.teal : M.midBlue}` }}>
+                      {kw} ×
+                    </span>
+                  ))}
+                  {suggestedKws.length > 0 && (
+                    <p style={{ margin: "6px 0 0", fontSize: 11, color: "#9aabb8" }}>
+                      <span style={{ color: M.teal }}>Teal</span> = AI suggested · <span style={{ color: M.midBlue }}>Blue</span> = manually added
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <button onClick={analyze} disabled={loading || content.trim().length < 10 || selectedPersonas.length === 0}
+              style={{ width: "100%", padding: 14, background: content.trim().length > 10 && selectedPersonas.length > 0 ? M.yellow : "#f5d980", border: "none", borderRadius: 6, color: "#000", fontSize: 13.5, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 4 }}>
+              {loading ? <><Spin dark />Analyzing Content…</> : "Analyze Content →"}
+            </button>
+            {selectedPersonas.length === 0 && (
+              <p style={{ fontSize: 12, color: "#9aabb8", textAlign: "center", marginTop: 6 }}>Select at least one persona to run the audit</p>
+            )}
+          </>
+        )}
+
+        {/* Error */}
+        {error && (
+          <div style={{ background: "#fff5f5", border: "1px solid #fbc8c5", borderRadius: 6, padding: "11px 14px", fontSize: 13, color: M.red, marginTop: 14 }}>{error}</div>
+        )}
+
+        {/* Loading */}
+        {loading && (
+          <div style={{ ...card, textAlign: "center", padding: 52, marginTop: 20 }}>
+            <svg width="36" height="36" viewBox="0 0 36 36" fill="none"
+              style={{ animation: "spin 0.9s linear infinite", margin: "0 auto 14px", display: "block" }}>
+              <circle cx="18" cy="18" r="14" stroke={M.midBlue} strokeWidth="3" strokeDasharray="62" strokeDashoffset="22" strokeLinecap="round" opacity="0.7" />
+            </svg>
+            <p style={{ margin: "0 0 5px", fontSize: 14, fontWeight: 600, color: M.headText }}>Running your content audit…</p>
+            <p style={{ margin: 0, fontSize: 12, color: "#8898a8" }}>
+              Scoring across {selectedPersonas.length} persona{selectedPersonas.length > 1 ? "s" : ""}{activeKws.length ? `, ${activeKws.length} keywords` : ""}, 4 dimensions
+            </p>
+          </div>
+        )}
+
+        {/* ── Results ── */}
+        {results && (() => {
+          const grade = getGrade(results.overall_score);
+          return (
+            <div className="fade-in">
+
+              {/* Score banner */}
+              <div style={{ background: `linear-gradient(135deg, ${M.darkNavy} 0%, #1d3f6e 55%, #2d1852 100%)`, borderRadius: 10, padding: "26px 30px", marginBottom: 16, boxShadow: "0 4px 20px rgba(21,50,95,0.2)" }}>
+                <p style={{ margin: "0 0 10px", fontSize: 10.5, fontWeight: 700, color: M.yellow, textTransform: "uppercase", letterSpacing: "1px" }}>Audit Result</p>
+                <div style={{ display: "flex", alignItems: "center", gap: 24, flexWrap: "wrap" }}>
+                  <div>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+                      <span style={{ fontSize: 60, fontWeight: 700, color: grade.color, lineHeight: 1 }}>{grade.letter}</span>
+                      <span style={{ fontSize: 30, fontWeight: 700, color: "#fff" }}>
+                        {Math.round(results.overall_score)}
+                        <span style={{ fontSize: 14, color: "rgba(255,255,255,0.4)", fontWeight: 400 }}>/100</span>
+                      </span>
+                    </div>
+                    <p style={{ margin: "6px 0 0", fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
+                      {selectedPersonas.map(id => PERSONAS.find(p => p.id === id)?.label).join(" · ")}
+                    </p>
+                    {activeKws.length > 0 && (
+                      <p style={{ margin: "3px 0 0", fontSize: 11.5, color: "rgba(255,255,255,0.3)" }}>
+                        {activeKws.join(", ")}
+                      </p>
+                    )}
+                  </div>
+                  <div style={{ marginLeft: "auto", display: "flex", gap: 18, flexWrap: "wrap" }}>
+                    {DIMS.map(d => (
+                      <div key={d.id} style={{ textAlign: "center" }}>
+                        <ScoreRing score={results.dimensions[d.id]?.score ?? 0} color={d.id === "cro" ? M.yellow : d.color} />
+                        <p style={{ margin: "4px 0 0", fontSize: 9.5, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.4px" }}>{d.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Dimension cards */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+                {DIMS.map(d => {
+                  const dim = results.dimensions[d.id];
+                  if (!dim) return null;
+                  const col = d.id === "cro" ? "#b07d00" : d.color;
+                  return (
+                    <div key={d.id} style={{ background: "#fff", border: "1px solid #d5dfe8", borderTop: `3px solid ${col}`, borderRadius: 10, padding: "20px 22px", boxShadow: "0 2px 8px rgba(21,50,95,0.05)" }}>
+                      <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 12 }}>
+                        <div style={{ width: 36, height: 36, borderRadius: 7, background: d.light, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: col }}>{d.abbr}</span>
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 3 }}>
+                            <span style={{ fontSize: 13.5, fontWeight: 700, color: M.headText }}>{d.label}</span>
+                            <span style={{ fontSize: 20, fontWeight: 700, color: col, lineHeight: 1 }}>{Math.round(dim.score)}</span>
+                          </div>
+                          <p style={{ margin: 0, fontSize: 12, color: "#7a8ea0", lineHeight: 1.45 }}>{dim.summary}</p>
+                        </div>
+                      </div>
+
+                      {/* Progress bar */}
+                      <div style={{ height: 4, background: "#edf2f7", borderRadius: 2, marginBottom: 14, overflow: "hidden" }}>
+                        <div style={{ height: "100%", width: `${Math.round(dim.score)}%`, background: col, borderRadius: 2, transition: "width 0.9s ease" }} />
+                      </div>
+
+                      {/* Per-persona breakdown */}
+                      {d.id === "persona" && dim.persona_breakdown && (
+                        <div style={{ background: "#f8fafc", borderRadius: 6, padding: "10px 12px", marginBottom: 14 }}>
+                          <p style={{ margin: "0 0 8px", fontSize: 10, fontWeight: 700, color: M.navBlue, textTransform: "uppercase", letterSpacing: "0.7px" }}>Per-persona alignment</p>
+                          {dim.persona_breakdown.map((pb, i) => (
+                            <div key={i} style={{ marginBottom: i < dim.persona_breakdown.length - 1 ? 8 : 0 }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+                                <span style={{ fontSize: 12, fontWeight: 600, color: M.headText }}>{pb.name}</span>
+                                <span style={{ fontSize: 12, fontWeight: 700, color: pb.alignment >= 70 ? M.teal : pb.alignment >= 50 ? "#c49300" : M.red }}>{pb.alignment}%</span>
+                              </div>
+                              <div style={{ height: 3, background: "#e2e8f0", borderRadius: 2, marginBottom: 2, overflow: "hidden" }}>
+                                <div style={{ height: "100%", width: `${pb.alignment}%`, background: pb.alignment >= 70 ? M.teal : pb.alignment >= 50 ? "#c49300" : M.red, borderRadius: 2 }} />
+                              </div>
+                              {pb.gap && <p style={{ margin: 0, fontSize: 11, color: "#9aabb8" }}>Gap: {pb.gap}</p>}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <p style={{ margin: "0 0 6px", fontSize: 10, fontWeight: 700, color: M.navBlue, textTransform: "uppercase", letterSpacing: "0.8px" }}>Top fixes</p>
+                      <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                        {dim.fixes.map((fix, i) => (
+                          <li key={i} style={{ fontSize: 12.5, color: M.bodyText, lineHeight: 1.55, padding: "6px 0 6px 15px", borderTop: i === 0 ? "none" : "1px solid #f0f4f8", position: "relative" }}>
+                            <span style={{ position: "absolute", left: 3, top: 11, width: 5, height: 5, borderRadius: "50%", background: col, display: "block" }} />
+                            {fix}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Regenerate */}
+              <div style={card}>
+                <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 700, color: M.headText }}>Regenerate with selected fixes</p>
+                <p style={{ margin: "0 0 16px", fontSize: 12.5, color: "#7a8ea0" }}>Check the fixes you want applied, then regenerate your content.</p>
+
+                {allFixes.map(({ fix, dim }, i) => {
+                  const col = dim.id === "cro" ? "#b07d00" : dim.color;
+                  return (
+                    <label key={i} className="fix-row">
+                      <input type="checkbox" checked={!!checkedFixes[fix]}
+                        onChange={e => setCheckedFixes(prev => ({ ...prev, [fix]: e.target.checked }))} />
+                      <div>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: col, textTransform: "uppercase", letterSpacing: "0.5px", marginRight: 6 }}>{dim.label}</span>
+                        <span style={{ fontSize: 13, color: M.bodyText }}>{fix}</span>
+                      </div>
+                    </label>
+                  );
+                })}
+
+                <button onClick={regenerate} disabled={regenLoading || selectedFixCount === 0}
+                  style={{ marginTop: 16, padding: "11px 22px", background: selectedFixCount > 0 ? M.midBlue : "#b0c4d8", border: "none", borderRadius: 6, color: "#fff", fontSize: 13, fontWeight: 700, cursor: selectedFixCount > 0 ? "pointer" : "not-allowed", display: "flex", alignItems: "center", gap: 8 }}>
+                  {regenLoading ? <><Spin />Regenerating…</> : `Regenerate with ${selectedFixCount} fix${selectedFixCount !== 1 ? "es" : ""} →`}
+                </button>
+
+                {improved && (
+                  <div className="fade-in">
+                    <p style={{ margin: "20px 0 4px", fontSize: 13, fontWeight: 700, color: M.headText }}>Content comparison</p>
+                    <DiffView original={content} improved={improved} />
+                  </div>
+                )}
+              </div>
+
+              <p style={{ margin: "10px 0 32px", fontSize: 11, color: "#9aabb8", textAlign: "center" }}>
+                Scores generated by Claude AI · Internal tool · Mitel Marketing Intelligence Beta
+              </p>
+            </div>
+          );
+        })()}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
