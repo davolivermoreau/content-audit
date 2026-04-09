@@ -33,11 +33,32 @@
     .p-card:hover  { border-color: #0073d0; box-shadow: 0 2px 12px rgba(0,115,208,0.1); }
     .p-card.active { border-color: #0073d0; background: #eaf3fb; }
 
-    /* Keyword pill — always solid filled when active */
-    .kw-pill { display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: 100px; font-size: 12px; font-weight: 600; margin: 3px; cursor: pointer; transition: all 0.15s; border: 1.5px solid; }
-    .kw-pill:hover { opacity: 0.85; }
+    /* Keyword pill — label not clickable, only × removes */
+    .kw-pill {
+      display: inline-flex; align-items: center; gap: 0;
+      border-radius: 100px; font-size: 12px; font-weight: 600;
+      margin: 3px; border: 1.5px solid;
+      overflow: hidden;
+    }
+    .kw-pill-label { padding: 5px 10px 5px 12px; }
+    .kw-pill-remove {
+      padding: 5px 10px 5px 6px; cursor: pointer;
+      display: flex; align-items: center; opacity: 0.7;
+      transition: opacity 0.15s, background 0.15s;
+      font-size: 14px; line-height: 1;
+    }
+    .kw-pill-remove:hover { opacity: 1; background: rgba(0,0,0,0.12); }
 
-    .fix-row { display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px; border-radius: 7px; cursor: pointer; transition: background 0.12s; margin: 2px 0; }
+    /* AI suggestion pill — outlined, click to add */
+    .kw-suggest {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 12px; border-radius: 100px; font-size: 12px; font-weight: 600;
+      margin: 3px; cursor: pointer; border: 1.5px dashed;
+      transition: all 0.15s;
+    }
+    .kw-suggest:hover { filter: brightness(0.93); }
+
+    .fix-row { display: flex; align-items: flex-start; gap: 10px; padding: 9px 10px; border-radius: 7px; cursor: pointer; transition: background 0.12s; margin: 2px 0; }
     .fix-row:hover   { background: #f5f8fc; }
     .fix-row.checked { background: #eaf3fb; }
     .fix-row input[type=checkbox] { margin-top: 3px; accent-color: #0073d0; width: 14px; height: 14px; flex-shrink: 0; cursor: pointer; }
@@ -58,9 +79,12 @@
     .copy-btn:hover  { background: #eaf3fb; }
     .copy-btn.copied { color: #009688; border-color: #009688; }
 
-    /* Improved content editor */
-    .improved-editor { width: 100%; min-height: 220px; padding: 14px 16px; font-size: 13.5px; line-height: 1.75; resize: vertical; border: 1.5px solid #86efac; border-radius: 8px; background: #f0fdf4; color: #333; }
-    .improved-editor:focus { border-color: #009688; box-shadow: 0 0 0 3px rgba(0,150,136,0.12); }
+    /* Impact badge */
+    .impact-badge {
+      display: inline-flex; align-items: center; gap: 3px;
+      font-size: 10.5px; font-weight: 700; padding: 2px 7px;
+      border-radius: 20px; white-space: nowrap; flex-shrink: 0;
+    }
   </style>
 </head>
 <body>
@@ -68,7 +92,6 @@
 <script type="text/babel">
 const { useState } = React;
 
-/* ── Tokens ── */
 const M = {
   darkNavy: "#15325f", navBlue: "#2E5C8A", midBlue: "#0073d0",
   yellow: "#FDB913", purple: "#812cc4", teal: "#009688",
@@ -107,17 +130,24 @@ const getGrade = s => {
   return         { letter: "F", color: M.red,     label: "Poor" };
 };
 
-/* ── Safari-safe copy ── */
+const getImpactColor = v => {
+  if (v >= 70) return { bg: "#fef3c7", color: "#92400e", border: "#fcd34d" };
+  if (v >= 40) return { bg: "#dbeafe", color: "#1e40af", border: "#93c5fd" };
+  return              { bg: "#f1f5f9", color: "#475569", border: "#cbd5e1" };
+};
+
+/* Safari-safe copy */
 function copyText(text, setCopied) {
   const done = () => { setCopied(true); setTimeout(() => setCopied(false), 1800); };
-  if (navigator.clipboard?.writeText) {
-    navigator.clipboard.writeText(text).then(done).catch(() => {
-      const ta = document.createElement("textarea");
-      ta.value = text; ta.style.cssText = "position:fixed;opacity:0"; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta); done();
-    });
-  } else {
+  try {
+    if (navigator.clipboard?.writeText) { navigator.clipboard.writeText(text).then(done).catch(fallback); }
+    else { fallback(); }
+  } catch { fallback(); }
+  function fallback() {
     const ta = document.createElement("textarea");
-    ta.value = text; ta.style.cssText = "position:fixed;opacity:0"; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta); done();
+    ta.value = text; ta.style.cssText = "position:fixed;opacity:0;top:0;left:0";
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    document.execCommand("copy"); document.body.removeChild(ta); done();
   }
 }
 
@@ -155,7 +185,17 @@ const CopyBtn = ({ text }) => {
   );
 };
 
-/* Inline score summary strip — used in improved panel */
+const ImpactBadge = ({ value }) => {
+  const c = getImpactColor(value);
+  const label = value >= 70 ? "High impact" : value >= 40 ? "Medium" : "Low";
+  return (
+    <span className="impact-badge" style={{ background: c.bg, color: c.color, border: `1px solid ${c.border}` }}>
+      ↑{value}% {label}
+    </span>
+  );
+};
+
+/* Score summary strip for comparison panel */
 const ScoreStrip = ({ results, label, accent }) => {
   const grade = getGrade(results.overall_score);
   return (
@@ -197,6 +237,9 @@ const ScoreDelta = ({ before, after }) => {
   );
 };
 
+/* Normalize fixes — server now returns [{text, impact}] but handle old [{string}] too */
+const getFixes = dim => (dim?.fixes || []).map(f => typeof f === "string" ? { text: f, impact: 50 } : f);
+
 /* ── API helper ── */
 async function post(endpoint, body) {
   const r = await fetch(endpoint, {
@@ -210,35 +253,31 @@ async function post(endpoint, body) {
 
 /* ══════════════════════════════════════════════════════════════════════════ */
 function App() {
-  /* Form */
   const [content,          setContent]          = useState("");
   const [selectedPersonas, setSelectedPersonas] = useState([]);
   const [kwInput,          setKwInput]          = useState("");
-  const [activeKws,        setActiveKws]        = useState([]);   // all kws — manual + suggested
-  const [suggestedKwSet,   setSuggestedKwSet]   = useState(new Set()); // track which were AI-suggested
+  const [activeKws,        setActiveKws]        = useState([]);
+  const [suggestedKwSet,   setSuggestedKwSet]   = useState(new Set());
+  const [pendingSuggests,  setPendingSuggests]  = useState([]); // shown below input, click to add
   const [kwLoading,        setKwLoading]        = useState(false);
 
-  /* Results */
   const [view,             setView]             = useState("form");
   const [results,          setResults]          = useState(null);
   const [error,            setError]            = useState(null);
 
-  /* Regen */
   const [checkedFixes,     setCheckedFixes]     = useState({});
   const [regenLoading,     setRegenLoading]     = useState(false);
-  const [improvedText,     setImprovedText]     = useState("");   // editable
+  const [improvedText,     setImprovedText]     = useState("");
   const [improvedResults,  setImprovedResults]  = useState(null);
   const [retestLoading,    setRetestLoading]    = useState(false);
 
   const togglePersona = id => setSelectedPersonas(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
 
-  /* Remove a keyword pill */
   const removeKw = kw => {
     setActiveKws(prev => prev.filter(k => k !== kw));
     setSuggestedKwSet(prev => { const s = new Set(prev); s.delete(kw); return s; });
   };
 
-  /* Add from text input */
   const addManualKws = () => {
     const kws = kwInput.split(",").map(k => k.trim()).filter(Boolean);
     if (!kws.length) return;
@@ -246,21 +285,32 @@ function App() {
     setKwInput("");
   };
 
-  /* AI suggest — adds directly to activeKws, marks as suggested */
+  /* Add a pending suggestion to active list */
+  const addSuggestion = kw => {
+    setActiveKws(prev => [...new Set([...prev, kw])]);
+    setSuggestedKwSet(prev => { const s = new Set(prev); s.add(kw); return s; });
+    setPendingSuggests(prev => prev.filter(k => k !== kw));
+  };
+
+  /* Add all pending suggestions at once */
+  const addAllSuggestions = () => {
+    setActiveKws(prev => [...new Set([...prev, ...pendingSuggests])]);
+    setSuggestedKwSet(prev => { const s = new Set(prev); pendingSuggests.forEach(k => s.add(k)); return s; });
+    setPendingSuggests([]);
+  };
+
   const suggestKeywords = async () => {
     if (!content.trim()) return;
-    setKwLoading(true); setError(null);
+    setKwLoading(true); setError(null); setPendingSuggests([]);
     try {
       const text = await post("/api/keywords", { content, existing: activeKws });
       const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
-      const newKws = parsed.filter(k => !activeKws.includes(k));
-      setActiveKws(prev => [...new Set([...prev, ...newKws])]);
-      setSuggestedKwSet(prev => { const s = new Set(prev); newKws.forEach(k => s.add(k)); return s; });
+      // Show as pending — user explicitly clicks to add each one
+      setPendingSuggests(parsed.filter(k => !activeKws.includes(k)));
     } catch { setError("Keyword suggestion failed — please try again."); }
     finally { setKwLoading(false); }
   };
 
-  /* Run analysis */
   const analyze = async (contentToUse = content) => {
     if (contentToUse.trim().length < 80) { setError("Paste at least 80 characters of content."); return; }
     if (selectedPersonas.length === 0) { setError("Select at least one persona."); return; }
@@ -277,7 +327,6 @@ function App() {
     }
   };
 
-  /* Regenerate + immediately score the result */
   const regenerate = async () => {
     const fixes = Object.entries(checkedFixes).filter(([, v]) => v).map(([k]) => k);
     if (!fixes.length) return;
@@ -287,20 +336,16 @@ function App() {
       const text = await post("/api/regenerate", { content, fixes, keywords: activeKws, personas });
       const rewritten = text.trim();
       setImprovedText(rewritten);
-
-      /* Auto-score immediately */
       setRetestLoading(true);
       try {
         const scoreText = await post("/api/analyze", { content: rewritten, personas, keywords: activeKws });
         setImprovedResults(JSON.parse(scoreText.replace(/```json|```/g, "").trim()));
-      } catch { /* silent — user can retry manually */ }
+      } catch { }
       finally { setRetestLoading(false); }
-
     } catch (e) { setError(e.message || "Regeneration failed."); }
     finally { setRegenLoading(false); }
   };
 
-  /* Re-test manually edited improved text */
   const retestImproved = async () => {
     if (!improvedText.trim()) return;
     setRetestLoading(true); setImprovedResults(null); setError(null);
@@ -320,19 +365,20 @@ function App() {
 
   const fullReset = () => {
     goBack(); setContent(""); setActiveKws([]); setSuggestedKwSet(new Set());
-    setKwInput(""); setSelectedPersonas([]);
+    setKwInput(""); setSelectedPersonas([]); setPendingSuggests([]);
   };
 
   const allFixes = results
-    ? DIMS.flatMap(d => (results.dimensions[d.id]?.fixes || []).map(f => ({ fix: f, dim: d })))
+    ? DIMS.flatMap(d => getFixes(results.dimensions[d.id]).map(f => ({ fix: f.text, impact: f.impact, dim: d })))
     : [];
   const selectedFixCount = Object.values(checkedFixes).filter(Boolean).length;
   const canRun = content.trim().length >= 80 && selectedPersonas.length > 0;
 
   const card = { background: "#fff", border: "1.5px solid #dae1ea", borderRadius: 12, padding: "24px 26px", marginBottom: 18, boxShadow: "0 2px 12px rgba(21,50,95,0.06)" };
+  const sectionLabel = { fontSize: 11, fontWeight: 700, color: M.navBlue, textTransform: "uppercase", letterSpacing: "0.9px", display: "block", marginBottom: 10 };
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f0f4f8", paddingBottom: selectedFixCount > 0 && view === "results" ? 80 : 0 }}>
+    <div style={{ minHeight: "100vh", background: "#f0f4f8", paddingBottom: selectedFixCount > 0 && view === "results" ? 84 : 0 }}>
 
       {/* Utility bar */}
       <div style={{ background: M.darkNavy, height: 34, padding: "0 32px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -404,8 +450,10 @@ function App() {
         {/* ══ FORM ══ */}
         {view === "form" && (
           <div className="fade-up">
+
+            {/* Content */}
             <div style={card}>
-              <label style={{ fontSize: 11, fontWeight: 700, color: M.navBlue, textTransform: "uppercase", letterSpacing: "0.9px", display: "block", marginBottom: 10 }}>Content to audit</label>
+              <label style={sectionLabel}>Content to audit</label>
               <textarea style={{ width: "100%", minHeight: 155, padding: "13px 15px", fontSize: 14, lineHeight: 1.7, resize: "vertical" }}
                 placeholder="Paste your web page copy, email, blog post, or any marketing content here…"
                 value={content} onChange={e => setContent(e.target.value)} />
@@ -419,7 +467,7 @@ function App() {
             {/* Personas */}
             <div style={card}>
               <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 14 }}>
-                <label style={{ fontSize: 11, fontWeight: 700, color: M.navBlue, textTransform: "uppercase", letterSpacing: "0.9px" }}>Target personas</label>
+                <label style={{ ...sectionLabel, marginBottom: 0 }}>Target personas</label>
                 <span style={{ fontSize: 12, color: "#9aabb8" }}>Select all that apply</span>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -448,10 +496,11 @@ function App() {
             {/* Keywords */}
             <div style={card}>
               <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 12 }}>
-                <label style={{ fontSize: 11, fontWeight: 700, color: M.navBlue, textTransform: "uppercase", letterSpacing: "0.9px" }}>Focus keywords</label>
+                <label style={{ ...sectionLabel, marginBottom: 0 }}>Focus keywords</label>
                 <span style={{ fontSize: 12, color: "#9aabb8" }}>Enter yours or let AI suggest</span>
               </div>
-              <div style={{ display: "flex", gap: 8 }}>
+
+              <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
                 <input type="text" style={{ flex: 1, padding: "10px 13px" }}
                   placeholder="unified communications, cloud phone system…"
                   value={kwInput} onChange={e => setKwInput(e.target.value)}
@@ -466,27 +515,55 @@ function App() {
                 </button>
               </div>
 
-              {/* Single unified pill list */}
+              {/* Active keywords — solid pills, × to remove */}
               {activeKws.length > 0 && (
-                <div style={{ marginTop: 12 }}>
-                  <p style={{ fontSize: 11, fontWeight: 600, color: "#8898a8", textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: 7 }}>
-                    {activeKws.length} keyword{activeKws.length > 1 ? "s" : ""} active — click to remove
+                <div style={{ marginBottom: pendingSuggests.length > 0 ? 14 : 0 }}>
+                  <p style={{ fontSize: 11, fontWeight: 600, color: "#8898a8", textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: 8 }}>
+                    {activeKws.length} keyword{activeKws.length > 1 ? "s" : ""} active
                   </p>
                   <div>
                     {activeKws.map(kw => {
                       const isSugg = suggestedKwSet.has(kw);
+                      const bg = isSugg ? M.teal : M.midBlue;
                       return (
-                        <span key={kw} className="kw-pill" onClick={() => removeKw(kw)}
-                          style={{ background: isSugg ? M.teal : M.midBlue, color: "#fff", borderColor: isSugg ? M.teal : M.midBlue }}>
-                          {isSugg && <span style={{ fontSize: 10 }}>✦</span>}{kw} ×
+                        <span key={kw} className="kw-pill" style={{ background: bg, color: "#fff", borderColor: bg }}>
+                          <span className="kw-pill-label">{isSugg && <span style={{ fontSize: 10, marginRight: 3 }}>✦</span>}{kw}</span>
+                          <span className="kw-pill-remove" onClick={() => removeKw(kw)} title="Remove keyword">×</span>
                         </span>
                       );
                     })}
                   </div>
-                  <p style={{ marginTop: 7, fontSize: 11.5, color: "#9aabb8" }}>
-                    <span style={{ color: M.teal, fontWeight: 600 }}>✦ Teal</span> = AI suggested · <span style={{ color: M.midBlue, fontWeight: 600 }}>Blue</span> = added by you
+                </div>
+              )}
+
+              {/* Pending AI suggestions — dashed outline, click to add */}
+              {pendingSuggests.length > 0 && (
+                <div style={{ borderTop: activeKws.length > 0 ? "1px solid #edf2f7" : "none", paddingTop: activeKws.length > 0 ? 14 : 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                    <p style={{ fontSize: 11, fontWeight: 600, color: M.teal, textTransform: "uppercase", letterSpacing: "0.6px" }}>
+                      ✦ AI suggestions — click to add
+                    </p>
+                    <button onClick={addAllSuggestions}
+                      style={{ fontSize: 11.5, fontWeight: 600, color: M.teal, background: "#e3f4f2", border: `1px solid ${M.teal}`, borderRadius: 6, padding: "3px 10px", cursor: "pointer", fontFamily: "inherit" }}>
+                      Add all
+                    </button>
+                  </div>
+                  <div>
+                    {pendingSuggests.map(kw => (
+                      <span key={kw} className="kw-suggest" onClick={() => addSuggestion(kw)}
+                        style={{ color: M.teal, borderColor: M.teal, background: "#f0fdf9" }}>
+                        <span style={{ fontSize: 11 }}>+</span> {kw}
+                      </span>
+                    ))}
+                  </div>
+                  <p style={{ marginTop: 8, fontSize: 11.5, color: "#9aabb8" }}>
+                    Click a keyword to add it · <span style={{ color: M.teal, fontWeight: 600 }}>✦ Teal solid</span> = added AI suggestions · <span style={{ color: M.midBlue, fontWeight: 600 }}>Blue solid</span> = added by you
                   </p>
                 </div>
+              )}
+
+              {activeKws.length === 0 && pendingSuggests.length === 0 && (
+                <p style={{ fontSize: 12, color: "#b0bcca", fontStyle: "italic" }}>No keywords added yet — type above or click AI Suggest</p>
               )}
             </div>
 
@@ -525,7 +602,7 @@ function App() {
                 <p style={{ margin: "0 0 14px", fontSize: 11, fontWeight: 700, color: M.yellow, textTransform: "uppercase", letterSpacing: "1.2px" }}>Audit Result</p>
                 <div style={{ display: "flex", alignItems: "center", gap: 28, flexWrap: "wrap" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-                    <div style={{ textAlign: "center" }}>
+                    <div>
                       <div style={{ fontSize: 66, fontWeight: 700, color: grade.color, lineHeight: 1 }}>{grade.letter}</div>
                       <div style={{ fontSize: 11.5, fontWeight: 600, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>{grade.label}</div>
                     </div>
@@ -539,15 +616,12 @@ function App() {
                     </div>
                   </div>
 
-                  {/* Keywords in banner */}
                   {activeKws.length > 0 && (
                     <div style={{ borderLeft: "1px solid rgba(255,255,255,0.12)", paddingLeft: 24 }}>
                       <p style={{ margin: "0 0 7px", fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.8px" }}>Scored against</p>
                       <div>
                         {activeKws.map(kw => (
-                          <span key={kw} style={{ display: "inline-block", background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 100, padding: "3px 11px", fontSize: 12, color: "#fff", margin: "2px 3px", fontWeight: 500 }}>
-                            {kw}
-                          </span>
+                          <span key={kw} style={{ display: "inline-block", background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 100, padding: "3px 11px", fontSize: 12, color: "#fff", margin: "2px 3px", fontWeight: 500 }}>{kw}</span>
                         ))}
                       </div>
                     </div>
@@ -564,13 +638,14 @@ function App() {
                 </div>
               </div>
 
-              {/* Dimension cards with inline fix checkboxes */}
+              {/* Dimension cards */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 18 }}>
                 {DIMS.map(d => {
                   const dim = results.dimensions[d.id];
                   if (!dim) return null;
                   const col = d.id === "cro" ? "#9a6b00" : d.color;
-                  const dimCheckedCount = (dim.fixes || []).filter(f => checkedFixes[f]).length;
+                  const fixes = getFixes(dim);
+                  const dimCheckedCount = fixes.filter(f => checkedFixes[f.text]).length;
                   return (
                     <div key={d.id} style={{ background: "#fff", border: "1.5px solid #dae1ea", borderRadius: 12, overflow: "hidden", boxShadow: "0 2px 10px rgba(21,50,95,0.05)" }}>
                       <div style={{ background: d.bg, padding: "16px 20px", borderBottom: `2px solid ${col}22`, display: "flex", alignItems: "center", gap: 12 }}>
@@ -588,7 +663,6 @@ function App() {
                           <div className="score-bar" style={{ height: "100%", width: `${Math.round(dim.score)}%`, background: `linear-gradient(90deg, ${col}88, ${col})`, borderRadius: 3 }} />
                         </div>
 
-                        {/* Persona breakdown */}
                         {d.id === "persona" && dim.persona_breakdown?.length > 0 && (
                           <div style={{ background: "#f8fafc", borderRadius: 8, padding: "11px 13px", marginBottom: 14 }}>
                             <p style={{ margin: "0 0 9px", fontSize: 10.5, fontWeight: 700, color: M.navBlue, textTransform: "uppercase", letterSpacing: "0.7px" }}>Per-persona alignment</p>
@@ -610,24 +684,22 @@ function App() {
                           </div>
                         )}
 
-                        {/* Fixes with inline checkboxes */}
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                          <p style={{ margin: 0, fontSize: 10.5, fontWeight: 700, color: M.navBlue, textTransform: "uppercase", letterSpacing: "0.8px" }}>
-                            Fixes — select to apply
-                          </p>
+                          <p style={{ margin: 0, fontSize: 10.5, fontWeight: 700, color: M.navBlue, textTransform: "uppercase", letterSpacing: "0.8px" }}>Fixes — select to apply</p>
                           {dimCheckedCount > 0 && (
-                            <span style={{ fontSize: 11, fontWeight: 600, color: M.midBlue, background: "#eaf3fb", borderRadius: 20, padding: "2px 8px" }}>
-                              {dimCheckedCount} selected
-                            </span>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: M.midBlue, background: "#eaf3fb", borderRadius: 20, padding: "2px 8px" }}>{dimCheckedCount} selected</span>
                           )}
                         </div>
-                        {dim.fixes.map((fix, i) => {
-                          const isChecked = !!checkedFixes[fix];
+                        {fixes.map((f, i) => {
+                          const isChecked = !!checkedFixes[f.text];
                           return (
                             <label key={i} className={`fix-row${isChecked ? " checked" : ""}`}>
                               <input type="checkbox" checked={isChecked}
-                                onChange={e => setCheckedFixes(prev => ({ ...prev, [fix]: e.target.checked }))} />
-                              <span style={{ fontSize: 13, color: isChecked ? M.midBlue : "#444", lineHeight: 1.5, fontWeight: isChecked ? 500 : 400 }}>{fix}</span>
+                                onChange={e => setCheckedFixes(prev => ({ ...prev, [f.text]: e.target.checked }))} />
+                              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
+                                <span style={{ fontSize: 13, color: isChecked ? M.midBlue : "#444", lineHeight: 1.5, fontWeight: isChecked ? 500 : 400 }}>{f.text}</span>
+                                <ImpactBadge value={f.impact} />
+                              </div>
                             </label>
                           );
                         })}
@@ -637,40 +709,46 @@ function App() {
                 })}
               </div>
 
-              {/* ── Improved content panel ── */}
+              {/* Improved content panel */}
               {(regenLoading || improvedText) && (
                 <div style={{ ...card }} className="fade-up">
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
                     <img src={ICONS.ai} alt="" width={26} height={26} />
                     <span style={{ fontSize: 15, fontWeight: 700, color: M.darkNavy }}>Improved version</span>
-                    {retestLoading && <span style={{ fontSize: 12, color: "#8898a8", display: "flex", alignItems: "center", gap: 6 }}><Spin dark size={13} />Scoring…</span>}
+                    {retestLoading && (
+                      <span style={{ fontSize: 12, color: "#8898a8", display: "flex", alignItems: "center", gap: 6, marginLeft: 6 }}>
+                        <Spin dark size={13} />Scoring…
+                      </span>
+                    )}
                   </div>
 
                   {regenLoading && (
-                    <div style={{ textAlign: "center", padding: "28px 0", color: "#8898a8", display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+                    <div style={{ textAlign: "center", padding: "28px 0", display: "flex", flexDirection: "column", alignItems: "center", gap: 10, color: "#8898a8" }}>
                       <Spin dark size={22} />
                       <span style={{ fontSize: 13.5 }}>Rewriting your content…</span>
                     </div>
                   )}
 
                   {improvedText && (
-                    <div style={{ display: "grid", gridTemplateColumns: improvedResults ? "1fr 1fr" : "1fr", gap: 16 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: improvedResults ? "1fr 1fr" : "1fr", gap: 18 }}>
 
-                      {/* Editable textarea */}
+                      {/* Editor — plain white, looks like a real text editor */}
                       <div>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: M.teal, textTransform: "uppercase", letterSpacing: "0.8px" }}>Edit & refine</span>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: M.navBlue, textTransform: "uppercase", letterSpacing: "0.8px" }}>Edit & refine</span>
                           <div style={{ display: "flex", gap: 8 }}>
                             <CopyBtn text={improvedText} />
                             <button onClick={retestImproved} disabled={retestLoading}
-                              style={{ padding: "4px 12px", background: retestLoading ? "#b0c4d8" : M.midBlue, color: "#fff", border: "none", borderRadius: 6, fontSize: 11.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 5 }}>
+                              style={{ padding: "5px 13px", background: retestLoading ? "#b0c4d8" : M.midBlue, color: "#fff", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 5, textTransform: "uppercase", letterSpacing: "0.5px" }}>
                               {retestLoading ? <><Spin size={11} />Testing…</> : "Re-test →"}
                             </button>
                           </div>
                         </div>
-                        <textarea className="improved-editor"
+                        {/* Plain white editor — no green background */}
+                        <textarea
+                          style={{ width: "100%", minHeight: 240, padding: "14px 16px", fontSize: 13.5, lineHeight: 1.75, resize: "vertical", background: "#fff", border: "1.5px solid #dae1ea", borderRadius: 8, color: "#333", fontFamily: "inherit" }}
                           value={improvedText} onChange={e => setImprovedText(e.target.value)} />
-                        <p style={{ fontSize: 11.5, color: "#9aabb8", marginTop: 6 }}>Edit the content above, then click Re-test to score your changes</p>
+                        <p style={{ fontSize: 11.5, color: "#9aabb8", marginTop: 6 }}>Edit above, then click Re-test to score your changes</p>
                       </div>
 
                       {/* Score comparison */}
@@ -682,17 +760,16 @@ function App() {
                           <div style={{ marginBottom: 10 }}>
                             <ScoreStrip results={improvedResults} label="Improved score" accent={M.teal} />
                           </div>
-                          {/* Delta summary */}
                           <div style={{ background: "#eaf3fb", border: "1.5px solid #b8d4ee", borderRadius: 10, padding: "12px 16px" }}>
                             <p style={{ margin: "0 0 8px", fontSize: 10.5, fontWeight: 700, color: M.navBlue, textTransform: "uppercase", letterSpacing: "0.7px" }}>Score changes</p>
-                            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                <span style={{ fontSize: 12.5, fontWeight: 600, color: M.darkNavy }}>Overall</span>
+                                <span style={{ fontSize: 13, fontWeight: 600, color: M.darkNavy }}>Overall</span>
                                 <ScoreDelta before={results.overall_score} after={improvedResults.overall_score} />
                               </div>
                               {DIMS.map(d => (
                                 <div key={d.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                  <span style={{ fontSize: 12, color: "#555" }}>{d.label}</span>
+                                  <span style={{ fontSize: 12.5, color: "#555" }}>{d.label}</span>
                                   <ScoreDelta before={results.dimensions[d.id]?.score ?? 0} after={improvedResults.dimensions[d.id]?.score ?? 0} />
                                 </div>
                               ))}

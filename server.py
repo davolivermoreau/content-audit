@@ -91,37 +91,39 @@ SCORING CRITERIA:
 Mitel's voice: professional, direct, confident, outcome-focused, human. Never hypey or corporate-stiff.
 - Score 90+: Every sentence earns its place. Specific outcomes, numbers, active voice throughout. Zero clichés.
 - Score 70-89: Mostly strong but some vague claims or passive constructions.
-- Score 50-69: Noticeable clichés (seamless/robust/innovative/cutting-edge/next-gen/game-changing/empower), passive voice, or marketing fluff present.
-- Score below 50: Heavy clichés, vague claims with no evidence, or tone feels generic and could be any vendor.
+- Score 50-69: Noticeable clichés (seamless/robust/innovative/cutting-edge/next-gen/game-changing/empower), passive voice, or marketing fluff.
+- Score below 50: Heavy clichés, vague claims with no evidence, generic tone that could be any vendor.
 
 2. SEO / AEO (score: seo)
-Score for search engine discoverability AND AI answer engine optimization (featured snippets, direct answers).
-- Score 90+: Keywords appear naturally in H1, first paragraph, and subheadings. Content directly answers the implied search query. FAQ or Q&A structure present. Scannable.
-- Score 70-89: Keywords present but placement could be stronger. Some structure but could be more scannable.
+Score for search engine discoverability AND AI answer engine optimization.
+- Score 90+: Keywords in H1, first paragraph, subheadings. Directly answers the implied search query. FAQ or Q&A structure present.
+- Score 70-89: Keywords present but placement could be stronger. Some structure but not fully scannable.
 - Score 50-69: Keywords sparse or forced. Wall-of-text paragraphs. Missing subheads.
-- Score below 50: Keywords absent or stuffed unnaturally. No structure. Would not rank or appear in AI answers.
+- Score below 50: Keywords absent or stuffed. No structure. Would not rank or appear in AI answers.
 
 3. PERSONA FIT (score: persona)
 Score against ALL selected personas simultaneously.
-- Score 90+: Content speaks directly to the role-specific concerns of every selected persona. Technical depth matches each audience. Pain points addressed explicitly.
+- Score 90+: Speaks directly to role-specific concerns of every selected persona. Technical depth matches each audience.
 - Score 70-89: Relevant to most personas but misses specific pain points for some.
-- Score 50-69: Generic content that could apply to anyone. Misses role-specific language entirely for some personas.
-- Score below 50: Wrong audience entirely, or ignores primary pain points across most selected personas.
+- Score 50-69: Generic content. Misses role-specific language for some personas.
+- Score below 50: Wrong audience, or ignores primary pain points across most selected personas.
 
 4. CRO READINESS (score: cro)
-- Score 90+: Clear, compelling CTA. Value proposition in first paragraph. Benefits stated before features. Social proof present. Logical conversion path.
+- Score 90+: Clear compelling CTA. Value proposition in first paragraph. Benefits before features. Social proof present.
 - Score 70-89: CTA present but could be stronger. Value prop present but not prominent.
-- Score 50-69: CTA buried or generic ("Contact us"). Features listed without connecting to business outcomes.
-- Score below 50: No CTA. No value proposition. Pure feature list. Reader has no reason to act.
+- Score 50-69: CTA buried or generic. Features listed without business outcomes.
+- Score below 50: No CTA. No value proposition. Pure feature list.
+
+For each fix, also provide an impact score (integer 1-100) representing the estimated score improvement that fix would produce if implemented. Higher = bigger improvement.
 
 Return EXACTLY this structure:
-{"overall_score":<int>,"dimensions":{"tone":{"score":<int>,"summary":"<one honest verdict, max 12 words>","fixes":["<specific actionable fix>","<specific actionable fix>","<specific actionable fix>"]},"seo":{"score":<int>,"summary":"<one honest verdict, max 12 words>","fixes":["<specific actionable fix>","<specific actionable fix>","<specific actionable fix>"]},"persona":{"score":<int>,"summary":"<one honest verdict, max 12 words>","fixes":["<specific actionable fix>","<specific actionable fix>","<specific actionable fix>"],"persona_breakdown":[{"name":"<persona label>","alignment":<int 0-100>,"gap":"<max 10 words>"}]},"cro":{"score":<int>,"summary":"<one honest verdict, max 12 words>","fixes":["<specific actionable fix>","<specific actionable fix>","<specific actionable fix>"]}}}"""
+{"overall_score":<int>,"dimensions":{"tone":{"score":<int>,"summary":"<one honest verdict, max 12 words>","fixes":[{"text":"<specific actionable fix>","impact":<int 1-100>},{"text":"<specific actionable fix>","impact":<int 1-100>},{"text":"<specific actionable fix>","impact":<int 1-100>}]},"seo":{"score":<int>,"summary":"<one honest verdict, max 12 words>","fixes":[{"text":"<fix>","impact":<int>},{"text":"<fix>","impact":<int>},{"text":"<fix>","impact":<int>}]},"persona":{"score":<int>,"summary":"<one honest verdict, max 12 words>","fixes":[{"text":"<fix>","impact":<int>},{"text":"<fix>","impact":<int>},{"text":"<fix>","impact":<int>}],"persona_breakdown":[{"name":"<persona label>","alignment":<int 0-100>,"gap":"<max 10 words>"}]},"cro":{"score":<int>,"summary":"<one honest verdict, max 12 words>","fixes":[{"text":"<fix>","impact":<int>},{"text":"<fix>","impact":<int>},{"text":"<fix>","impact":<int>}]}}}"""
 
     user = f"CONTENT TO AUDIT:\n---\n{content}\n---\n\nTARGET PERSONAS:\n{persona_lines}\n\nKEYWORDS TO SCORE AGAINST: {', '.join(keywords) if keywords else 'none specified'}\n\nReturn JSON only."
 
     return {
         "model": "claude-sonnet-4-20250514",
-        "max_tokens": 1400,
+        "max_tokens": 1600,
         "system": system,
         "messages": [{"role": "user", "content": user}],
     }
@@ -134,10 +136,10 @@ def build_keywords_payload(body: dict) -> dict:
     return {
         "model": "claude-sonnet-4-20250514",
         "max_tokens": 400,
-        "system": "You are an SEO strategist for Mitel, a B2B unified communications company. Suggest keywords that will improve both traditional search rankings and AI engine visibility (AEO). Return ONLY a JSON array of 6-8 keyword strings — no preamble, no markdown fences.",
+        "system": "You are an SEO strategist for Mitel, a B2B unified communications company. Suggest keywords that improve both traditional search rankings and AI engine visibility (AEO). Return ONLY a JSON array of 6-8 keyword strings — no preamble, no markdown fences.",
         "messages": [{
             "role": "user",
-            "content": f"Analyze this content and suggest the most impactful SEO/AEO keywords to target. Focus on B2B telecom, unified communications, cloud phone systems, and contact center terms that real buyers search for.\n\nContent:\n---\n{content}\n---\n\nAlready targeting: {', '.join(existing) if existing else 'none'}\n\nSuggest NEW keywords not already in the list. Return: [\"keyword 1\",\"keyword 2\",...]"
+            "content": f"Analyze this content and suggest the most impactful SEO/AEO keywords. Focus on B2B telecom, unified communications, cloud phone systems, and contact center terms that real buyers search for.\n\nContent:\n---\n{content}\n---\n\nAlready targeting: {', '.join(existing) if existing else 'none'}\n\nSuggest NEW keywords not already in the list. Return: [\"keyword 1\",\"keyword 2\",...]"
         }],
     }
 
@@ -154,17 +156,17 @@ def build_regen_payload(body: dict) -> dict:
 
     system = """You are a senior B2B copywriter at Mitel. Your job is to substantially rewrite marketing content so it scores significantly higher on tone, SEO, persona fit, and conversion.
 
-REWRITING RULES — follow these without exception:
+REWRITING RULES — follow without exception:
 1. REPLACE every cliché immediately: never use seamless, robust, innovative, cutting-edge, next-gen, game-changing, empower, leverage, utilize, holistic, synergy, transformative
-2. MAKE IT SPECIFIC: replace vague claims with concrete outcomes and numbers wherever possible (e.g. "reduce call handling time", "connect 500+ users", "99.99% uptime SLA")
+2. MAKE IT SPECIFIC: replace vague claims with concrete outcomes and numbers (e.g. "reduce call handling time by 35%", "connect 500+ users", "99.99% uptime SLA")
 3. ACTIVE VOICE ONLY: rewrite every passive construction
 4. FRONT-LOAD THE VALUE: the first sentence must state what the reader gains — not what the product does
-5. INTEGRATE KEYWORDS NATURALLY: weave the target keywords into headline, first paragraph, and subheadings — not forced, not stuffed
-6. ADD A CLEAR CTA: if none exists, add one. If weak, make it specific (e.g. "Book a 30-minute demo" not "Contact us")
+5. INTEGRATE KEYWORDS NATURALLY: weave target keywords into headline, first paragraph, and subheadings
+6. ADD A CLEAR CTA: if none exists, add one specific one (e.g. "Book a 30-minute demo" not "Contact us")
 7. PRESERVE STRUCTURE: keep roughly the same length and any existing section breaks
 8. APPLY EVERY REQUESTED FIX: do not skip any improvement from the list
 
-Return ONLY the rewritten content. No explanation, no preamble, no "Here is the improved version:" — just the content itself."""
+Return ONLY the rewritten content. No explanation, no preamble — just the rewritten text itself."""
 
     user = f"""ORIGINAL CONTENT:
 ---
@@ -177,7 +179,7 @@ KEYWORDS TO INTEGRATE: {kw_context}
 IMPROVEMENTS TO APPLY:
 {fixes_text}
 
-Rewrite the content now. Make it meaningfully better — not cosmetically tweaked. The score should improve by at least 10-15 points on each targeted dimension. Return only the rewritten content."""
+Rewrite the content now. Make it meaningfully better — not cosmetically tweaked. Return only the rewritten content."""
 
     return {
         "model": "claude-sonnet-4-20250514",
