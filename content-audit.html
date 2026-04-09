@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Content Audit Dashboard — Mitel</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f4f8; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    textarea:focus, input:focus, select:focus { outline: none; border-color: #0073d0 !important; box-shadow: 0 0 0 3px rgba(0,115,208,0.1); }
+    button:not(:disabled):hover { filter: brightness(0.95); }
+    button:not(:disabled):active { filter: brightness(0.9); transform: scale(0.99); }
+    ::placeholder { color: #aab4be; }
+    select option { background: #fff; color: #1a1a1a; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState } = React;
+
+    /* ── Mitel brand tokens ──────────────────────────────────────────────── */
+    const M = {
+      darkNavy:  "#15325f",
+      navBlue:   "#2E5C8A",
+      midBlue:   "#0073d0",
+      lightBlue: "#00a1e0",
+      paleBlue:  "#bed9ed",
+      yellow:    "#FDB913",
+      purple:    "#812cc4",
+      teal:      "#009688",
+      green:     "#5a9e1c",
+      red:       "#ec3831",
+      gray:      "#58595b",
+      bodyText:  "#333333",
+      headText:  "#15325f",
+    };
+
+    /* Dimension colors — tuned for light backgrounds */
+    const DIMS = [
+      { id: "tone",    label: "Tone & Brand",  color: M.midBlue,   light: "#e8f2fb", abbr: "T&B" },
+      { id: "seo",     label: "SEO / AEO",     color: M.teal,      light: "#e3f4f2", abbr: "SEO" },
+      { id: "persona", label: "Persona Fit",   color: M.purple,    light: "#f2eaf9", abbr: "PER" },
+      { id: "cro",     label: "CRO Readiness", color: "#b07d00",   light: "#fdf5e0", abbr: "CRO" },
+    ];
+
+    const PERSONAS = [
+      { id: "it_dm",    label: "IT Decision Maker",       role: "CIO / IT Director",        pain: "reliability, security, TCO, vendor consolidation" },
+      { id: "biz_dm",   label: "Business Decision Maker", role: "CEO / CFO / COO",           pain: "employee productivity, cost control, business continuity" },
+      { id: "it_admin", label: "IT Admin / Engineer",     role: "Systems administrator",     pain: "ease of management, uptime, integration, minimal maintenance" },
+      { id: "end_user", label: "End User",                role: "Daily communications user", pain: "ease of use, call quality, mobile access, consistency" },
+      { id: "partner",  label: "Channel Partner",         role: "Reseller / MSP / VAR",      pain: "margins, competitive positioning, customer retention" },
+    ];
+
+    const getGrade = s => {
+      if (s >= 90) return { letter: "A", color: M.teal };
+      if (s >= 80) return { letter: "B", color: M.midBlue };
+      if (s >= 70) return { letter: "C", color: "#c49300" };
+      if (s >= 60) return { letter: "D", color: "#d4620a" };
+      return { letter: "F", color: M.red };
+    };
+
+    /* ── Score ring (SVG) ────────────────────────────────────────────────── */
+    const ScoreRing = ({ score, color, size = 72 }) => {
+      const r = 28, c = 2 * Math.PI * r;
+      const offset = c - (Math.round(score) / 100) * c;
+      return (
+        <svg width={size} height={size} viewBox="0 0 72 72">
+          <circle cx="36" cy="36" r={r} fill="none" stroke="rgba(0,0,0,0.07)" strokeWidth="5" />
+          <circle cx="36" cy="36" r={r} fill="none" stroke={color} strokeWidth="5"
+            strokeDasharray={c} strokeDashoffset={offset} strokeLinecap="round"
+            transform="rotate(-90 36 36)"
+            style={{ transition: "stroke-dashoffset 0.9s cubic-bezier(.34,1.56,.64,1)" }} />
+          <text x="36" y="40" textAnchor="middle" fill={color} fontSize="14" fontWeight="700"
+            fontFamily="Inter, system-ui, sans-serif">{Math.round(score)}</text>
+        </svg>
+      );
+    };
+
+    /* ── Spinner ─────────────────────────────────────────────────────────── */
+    const Spin = ({ dark }) => (
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none"
+        style={{ animation: "spin 0.8s linear infinite", flexShrink: 0 }}>
+        <circle cx="8" cy="8" r="6" stroke={dark ? "#000" : "#fff"} strokeWidth="2"
+          strokeDasharray="28" strokeDashoffset="10" strokeLinecap="round" opacity="0.45" />
+      </svg>
+    );
+
+    /* ── Mitel logo mark (3 bars) ────────────────────────────────────────── */
+    const MitelMark = () => (
+      <div style={{ width: 34, height: 34, background: M.yellow, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <svg width="20" height="16" viewBox="0 0 20 16" fill="none">
+          <rect x="0"    y="0" width="5" height="16" rx="1" fill={M.darkNavy} />
+          <rect x="7.5"  y="0" width="5" height="16" rx="1" fill={M.darkNavy} />
+          <rect x="15"   y="0" width="5" height="16" rx="1" fill={M.darkNavy} />
+        </svg>
+      </div>
+    );
+
+    /* ── Main app ────────────────────────────────────────────────────────── */
+    function App() {
+      const [apiKey,  setApiKey]  = useState("");
+      const [content, setContent] = useState("");
+      const [persona, setPersona] = useState("it_dm");
+      const [keyword, setKeyword] = useState("");
+      const [loading, setLoading] = useState(false);
+      const [results, setResults] = useState(null);
+      const [error,   setError]   = useState(null);
+
+      const sel = PERSONAS.find(p => p.id === persona);
+
+      const analyze = async () => {
+        if (!apiKey.trim()) { setError("Enter your Anthropic API key above to run the audit."); return; }
+        if (content.trim().length < 80) { setError("Paste at least 80 characters of content to get a meaningful audit."); return; }
+        setError(null); setLoading(true); setResults(null);
+
+        const sys = `You are a senior B2B content strategist auditing marketing content for Mitel, a unified communications company. Mitel sells phone systems, collaboration tools (MiCollab, Mitel One), and contact center solutions to mid-market and enterprise businesses.
+
+Score on 4 dimensions (integers 0–100) and return ONLY valid JSON — no preamble, no markdown fences.
+
+1. TONE & BRAND: Professional, direct, confident Mitel voice. Penalize clichés (seamless/robust/innovative/cutting-edge), passive voice, fluff, exclamation marks. Reward specific outcomes, active voice, clear value.
+
+2. SEO / AEO: Discoverability in search and AI engines. Penalize keyword stuffing, no scannable structure, walls of text. Reward natural keyword use, H2/H3 headers, direct answers, FAQ-style content.
+
+3. PERSONA FIT: Alignment with the persona's role, pain points, decision stage. Penalize wrong technical depth, ignoring pain points, mismatched language. Reward role-specific language, addressing pain directly.
+
+4. CRO READINESS: Ability to convert readers into leads. Penalize no CTA, buried value prop, features without benefits. Reward clear CTA, value prop upfront, benefit-first language, social proof.
+
+Return EXACTLY (integers only):
+{"overall_score":<int>,"dimensions":{"tone":{"score":<int>,"summary":"<max 12 words>","fixes":["<fix>","<fix>","<fix>"]},"seo":{"score":<int>,"summary":"<max 12 words>","fixes":["<fix>","<fix>","<fix>"]},"persona":{"score":<int>,"summary":"<max 12 words>","fixes":["<fix>","<fix>","<fix>"]},"cro":{"score":<int>,"summary":"<max 12 words>","fixes":["<fix>","<fix>","<fix>"]}}}`;
+
+        const usr = `CONTENT:\n---\n${content}\n---\nPERSONA: ${sel.label} (${sel.role}) — pain: ${sel.pain}\nKEYWORD: ${keyword.trim() || "none"}\n\nJSON only.`;
+
+        try {
+          const r = await fetch("https://api.anthropic.com/v1/messages", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-api-key": apiKey.trim(), "anthropic-version": "2023-06-01" },
+            body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1000, system: sys, messages: [{ role: "user", content: usr }] }),
+          });
+          const d = await r.json();
+          if (d.error) throw new Error(d.error.message);
+          setResults(JSON.parse((d.content?.[0]?.text || "").replace(/```json|```/g, "").trim()));
+        } catch (e) { setError(e.message || "Analysis failed — please try again."); }
+        finally { setLoading(false); }
+      };
+
+      const reset = () => { setResults(null); setContent(""); setKeyword(""); setError(null); };
+
+      const inp = { background: "#fff", border: "1px solid #cfd8e3", borderRadius: 6, fontSize: 13, fontFamily: "Inter, system-ui, sans-serif", color: M.bodyText };
+      const lbl = { fontSize: 11, fontWeight: 700, color: M.navBlue, textTransform: "uppercase", letterSpacing: "0.8px", display: "block", marginBottom: 7 };
+
+      return (
+        <div style={{ minHeight: "100vh", background: "#f0f4f8", fontFamily: "Inter, system-ui, sans-serif" }}>
+
+          {/* ── Utility bar ─────────────────────────────────────────────── */}
+          <div style={{ background: M.darkNavy, height: 36, padding: "0 28px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span style={{ fontSize: 11.5, color: "rgba(255,255,255,0.55)" }}>Mitel Marketing Intelligence</span>
+            <span style={{ fontSize: 10.5, fontWeight: 700, color: M.yellow, textTransform: "uppercase", letterSpacing: "0.9px" }}>Beta · Internal Use Only</span>
+          </div>
+
+          {/* ── Main nav ────────────────────────────────────────────────── */}
+          <div style={{ background: M.navBlue, height: 60, padding: "0 28px", display: "flex", alignItems: "center", gap: 14, borderBottom: `3px solid ${M.yellow}` }}>
+            <MitelMark />
+            <span style={{ fontSize: 18, fontWeight: 700, color: "#fff", letterSpacing: "-0.3px" }}>mitel</span>
+            <div style={{ width: 1, height: 22, background: "rgba(255,255,255,0.2)", margin: "0 4px" }} />
+            <div>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#fff", lineHeight: 1.2 }}>Content Audit Dashboard</p>
+              <p style={{ margin: 0, fontSize: 11, color: "rgba(255,255,255,0.5)" }}>Powered by Claude AI</p>
+            </div>
+            {results && (
+              <button onClick={reset} style={{ marginLeft: "auto", padding: "7px 16px", background: "transparent", border: "1px solid rgba(255,255,255,0.3)", borderRadius: 4, color: "#fff", fontSize: 11.5, fontWeight: 700, cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.6px" }}>
+                ← New Audit
+              </button>
+            )}
+          </div>
+
+          {/* ── Page body ───────────────────────────────────────────────── */}
+          <div style={{ maxWidth: 900, margin: "0 auto", padding: "36px 28px" }}>
+
+            {/* API key banner (always visible at top) */}
+            {!results && (
+              <div style={{ background: "#fff", border: "1px solid #cfd8e3", borderRadius: 8, padding: "14px 18px", marginBottom: 20, display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: apiKey.trim() ? M.teal : "#cfd8e3", flexShrink: 0 }} />
+                <label style={{ fontSize: 12, fontWeight: 600, color: M.gray, whiteSpace: "nowrap" }}>Anthropic API Key</label>
+                <input type="password"
+                  style={{ ...inp, flex: 1, padding: "7px 10px", fontSize: 12.5, letterSpacing: "0.05em" }}
+                  placeholder="sk-ant-…  (required to run analysis)"
+                  value={apiKey} onChange={e => setApiKey(e.target.value)} />
+                {apiKey.trim() && <span style={{ fontSize: 11.5, color: M.teal, fontWeight: 600, whiteSpace: "nowrap" }}>✓ Key set</span>}
+              </div>
+            )}
+
+            {/* Page headline */}
+            {!results && (
+              <>
+                <p style={{ margin: "0 0 6px", fontSize: 11.5, fontWeight: 700, color: M.yellow, textTransform: "uppercase", letterSpacing: "1px" }}>Marketing Content Analysis</p>
+                <h1 style={{ margin: "0 0 24px", fontSize: 26, fontWeight: 700, color: M.headText, lineHeight: 1.3 }}>
+                  Score your content before it goes live
+                </h1>
+              </>
+            )}
+
+            {/* Input card */}
+            {!results && (
+              <div style={{ background: "#fff", border: "1px solid #d5dfe8", borderRadius: 10, padding: 26, boxShadow: "0 2px 8px rgba(21,50,95,0.06)" }}>
+                <label style={lbl}>Content to audit</label>
+                <textarea style={{ ...inp, width: "100%", minHeight: 155, padding: "12px 14px", fontSize: 13.5, lineHeight: 1.65, resize: "vertical" }}
+                  placeholder="Paste your web page copy, email, blog post, or any marketing content here…"
+                  value={content} onChange={e => setContent(e.target.value)} />
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 16 }}>
+                  <div>
+                    <label style={lbl}>Target persona</label>
+                    <select style={{ ...inp, width: "100%", padding: "9px 11px", cursor: "pointer" }}
+                      value={persona} onChange={e => setPersona(e.target.value)}>
+                      {PERSONAS.map(p => <option key={p.id} value={p.id}>{p.label} — {p.role}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={lbl}>Focus keyword <span style={{ color: "#9aabb8", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional)</span></label>
+                    <input type="text" style={{ ...inp, width: "100%", padding: "9px 11px" }}
+                      placeholder="e.g. cloud phone system for business"
+                      value={keyword} onChange={e => setKeyword(e.target.value)} />
+                  </div>
+                </div>
+
+                <button onClick={analyze} disabled={loading || content.trim().length < 10}
+                  style={{ width: "100%", marginTop: 16, padding: 13, background: content.trim().length < 10 ? "#f5d980" : M.yellow, border: "none", borderRadius: 6, color: "#000", fontSize: 13, fontWeight: 700, cursor: content.trim().length < 10 ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, textTransform: "uppercase", letterSpacing: "0.8px" }}>
+                  {loading ? <><Spin dark />{" "}Analyzing Content…</> : "Analyze Content →"}
+                </button>
+              </div>
+            )}
+
+            {/* Error */}
+            {error && (
+              <div style={{ background: "#fff5f5", border: "1px solid #fbc8c5", borderRadius: 6, padding: "11px 14px", fontSize: 13, color: M.red, marginTop: 14 }}>{error}</div>
+            )}
+
+            {/* Loading */}
+            {loading && !results && (
+              <div style={{ background: "#fff", border: "1px solid #d5dfe8", borderRadius: 10, padding: 52, textAlign: "center", marginTop: 20, boxShadow: "0 2px 8px rgba(21,50,95,0.06)" }}>
+                <svg width="36" height="36" viewBox="0 0 36 36" fill="none" style={{ animation: "spin 0.9s linear infinite", margin: "0 auto 14px", display: "block" }}>
+                  <circle cx="18" cy="18" r="14" stroke={M.midBlue} strokeWidth="3" strokeDasharray="62" strokeDashoffset="22" strokeLinecap="round" opacity="0.7" />
+                </svg>
+                <p style={{ margin: "0 0 5px", fontSize: 14, fontWeight: 600, color: M.headText }}>Running your content audit…</p>
+                <p style={{ margin: 0, fontSize: 12, color: "#8898a8" }}>Scoring across Tone, SEO/AEO, Persona Fit and CRO Readiness</p>
+              </div>
+            )}
+
+            {/* ── Results ─────────────────────────────────────────────── */}
+            {results && (() => {
+              const grade = getGrade(results.overall_score);
+              return (
+                <>
+                  {/* Score banner — dark for contrast, like Mitel hero sections */}
+                  <div style={{ background: `linear-gradient(135deg, ${M.darkNavy} 0%, #1d3f6e 55%, #2d1852 100%)`, borderRadius: 10, padding: "26px 30px", marginBottom: 16, boxShadow: "0 4px 20px rgba(21,50,95,0.2)" }}>
+                    <p style={{ margin: "0 0 10px", fontSize: 10.5, fontWeight: 700, color: M.yellow, textTransform: "uppercase", letterSpacing: "1px" }}>Audit Result</p>
+                    <div style={{ display: "flex", alignItems: "center", gap: 24, flexWrap: "wrap" }}>
+                      <div>
+                        <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+                          <span style={{ fontSize: 60, fontWeight: 700, color: grade.color, lineHeight: 1 }}>{grade.letter}</span>
+                          <span style={{ fontSize: 30, fontWeight: 700, color: "#fff" }}>
+                            {Math.round(results.overall_score)}
+                            <span style={{ fontSize: 14, color: "rgba(255,255,255,0.4)", fontWeight: 400 }}>/100</span>
+                          </span>
+                        </div>
+                        <p style={{ margin: "6px 0 0", fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
+                          {sel.label} · {keyword || "no keyword"} · {new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                        </p>
+                      </div>
+                      <div style={{ marginLeft: "auto", display: "flex", gap: 20, flexWrap: "wrap" }}>
+                        {DIMS.map(d => (
+                          <div key={d.id} style={{ textAlign: "center" }}>
+                            <ScoreRing score={results.dimensions[d.id]?.score ?? 0} color={d.color === "#b07d00" ? M.yellow : d.color} />
+                            <p style={{ margin: "4px 0 0", fontSize: 9.5, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.4px" }}>{d.label}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Dimension cards — white / light */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    {DIMS.map(d => {
+                      const dim = results.dimensions[d.id];
+                      if (!dim) return null;
+                      return (
+                        <div key={d.id} style={{ background: "#fff", border: "1px solid #d5dfe8", borderTop: `3px solid ${d.color}`, borderRadius: 10, padding: "20px 22px", boxShadow: "0 2px 8px rgba(21,50,95,0.05)" }}>
+                          <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 13 }}>
+                            <div style={{ width: 36, height: 36, borderRadius: 7, background: d.light, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                              <span style={{ fontSize: 10, fontWeight: 700, color: d.color, letterSpacing: "0.3px" }}>{d.abbr}</span>
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 3 }}>
+                                <span style={{ fontSize: 13.5, fontWeight: 700, color: M.headText }}>{d.label}</span>
+                                <span style={{ fontSize: 20, fontWeight: 700, color: d.color, lineHeight: 1 }}>{Math.round(dim.score)}</span>
+                              </div>
+                              <p style={{ margin: 0, fontSize: 12, color: "#7a8ea0", lineHeight: 1.45 }}>{dim.summary}</p>
+                            </div>
+                          </div>
+                          {/* Score bar */}
+                          <div style={{ height: 4, background: "#edf2f7", borderRadius: 2, marginBottom: 14, overflow: "hidden" }}>
+                            <div style={{ height: "100%", width: `${Math.round(dim.score)}%`, background: d.color, borderRadius: 2, transition: "width 0.9s ease" }} />
+                          </div>
+                          <p style={{ margin: "0 0 8px", fontSize: 10, fontWeight: 700, color: M.navBlue, textTransform: "uppercase", letterSpacing: "0.8px" }}>Top fixes</p>
+                          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                            {dim.fixes.map((fix, i) => (
+                              <li key={i} style={{ fontSize: 12.5, color: M.bodyText, lineHeight: 1.55, padding: "7px 0 7px 16px", borderTop: i === 0 ? "none" : "1px solid #f0f4f8", position: "relative" }}>
+                                <span style={{ position: "absolute", left: 4, top: 12, width: 5, height: 5, borderRadius: "50%", background: d.color, display: "block" }} />
+                                {fix}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <p style={{ margin: "18px 0 0", fontSize: 11, color: "#9aabb8", textAlign: "center" }}>
+                    Scores generated by Claude AI · Internal tool · Mitel Marketing Intelligence Beta
+                  </p>
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
