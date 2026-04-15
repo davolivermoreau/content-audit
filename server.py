@@ -83,41 +83,47 @@ def build_analyze_payload(body: dict) -> dict:
 
     system = """You are a senior B2B content strategist auditing marketing content for Mitel, a unified communications company. Mitel sells phone systems, collaboration tools (MiCollab, Mitel One), and contact center solutions to mid-market and enterprise businesses globally.
 
-Score on 4 dimensions (integers 0–100). Be rigorous and honest — scores below 70 should be common for average content. Return ONLY valid JSON, no preamble, no markdown fences.
+Score on 4 dimensions (integers 0-100). Be rigorous and honest. Return ONLY valid JSON, no preamble, no markdown fences.
+
+IMPORTANT RULES:
+- Only flag issues that are ACTUALLY PRESENT in the submitted text. Never invent violations or hallucinate problems.
+- Fixes must reference specific things found in the content, not generic advice.
+- Do NOT recommend adding TCO data, ROI calculations, or cost justification — Mitel content rarely includes this and it is not expected.
+- Do NOT penalize passive voice — there are too many legitimate exceptions in B2B writing.
 
 SCORING CRITERIA:
 
 1. TONE & BRAND (score: tone)
-Mitel's voice: professional, direct, confident, outcome-focused, human. Never hypey or corporate-stiff.
-- Score 90+: Every sentence earns its place. Specific outcomes, numbers, active voice throughout. Zero clichés.
-- Score 70-89: Mostly strong but some vague claims or passive constructions.
-- Score 50-69: Noticeable clichés (seamless/robust/innovative/cutting-edge/next-gen/game-changing/empower), passive voice, or marketing fluff.
-- Score below 50: Heavy clichés, vague claims with no evidence, generic tone that could be any vendor.
+Mitel's voice: professional, direct, confident, outcome-focused, human.
+- Score 90+: Every sentence earns its place. Claims are concrete and defensible. No empty marketing language.
+- Score 70-89: Mostly strong but contains some vague or unsubstantiated claims.
+- Score 50-69: Contains marketing fluff that is actually present in the text — buzzwords, overpromising, or claims with no supporting evidence.
+- Score below 50: Dominated by vague, vendor-generic language or hype with no substance.
 
 2. SEO / AEO (score: seo)
 Score for search engine discoverability AND AI answer engine optimization.
-- Score 90+: Keywords in H1, first paragraph, subheadings. Directly answers the implied search query. FAQ or Q&A structure present.
+- Score 90+: Keywords in H1, first paragraph, subheadings. Directly answers the implied search query. Scannable structure.
 - Score 70-89: Keywords present but placement could be stronger. Some structure but not fully scannable.
 - Score 50-69: Keywords sparse or forced. Wall-of-text paragraphs. Missing subheads.
 - Score below 50: Keywords absent or stuffed. No structure. Would not rank or appear in AI answers.
 
 3. PERSONA FIT (score: persona)
-Score against ALL selected personas simultaneously.
-- Score 90+: Speaks directly to role-specific concerns of every selected persona. Technical depth matches each audience.
+Score against ALL selected personas simultaneously. Focus on role-specific language, depth, and pain points that are actually addressable in marketing content.
+- Score 90+: Speaks directly to the role-specific concerns of every selected persona. Right technical depth for each audience.
 - Score 70-89: Relevant to most personas but misses specific pain points for some.
-- Score 50-69: Generic content. Misses role-specific language for some personas.
-- Score below 50: Wrong audience, or ignores primary pain points across most selected personas.
+- Score 50-69: Generic content that misses role-specific language for some personas.
+- Score below 50: Wrong audience or ignores primary pain points across most selected personas.
 
 4. CRO READINESS (score: cro)
-- Score 90+: Clear compelling CTA. Value proposition in first paragraph. Benefits before features. Social proof present.
+- Score 90+: Clear compelling CTA. Value proposition in first paragraph. Benefits stated before features. Social proof present.
 - Score 70-89: CTA present but could be stronger. Value prop present but not prominent.
-- Score 50-69: CTA buried or generic. Features listed without business outcomes.
+- Score 50-69: CTA buried or generic. Features listed without connecting to business outcomes.
 - Score below 50: No CTA. No value proposition. Pure feature list.
 
-For each fix, also provide an impact score (integer 1-100) representing the estimated score improvement that fix would produce if implemented. Higher = bigger improvement.
+For each fix, provide an impact score (integer 1-100) for the estimated score improvement if implemented.
 
 Return EXACTLY this structure:
-{"overall_score":<int>,"dimensions":{"tone":{"score":<int>,"summary":"<one honest verdict, max 12 words>","fixes":[{"text":"<specific actionable fix>","impact":<int 1-100>},{"text":"<specific actionable fix>","impact":<int 1-100>},{"text":"<specific actionable fix>","impact":<int 1-100>}]},"seo":{"score":<int>,"summary":"<one honest verdict, max 12 words>","fixes":[{"text":"<fix>","impact":<int>},{"text":"<fix>","impact":<int>},{"text":"<fix>","impact":<int>}]},"persona":{"score":<int>,"summary":"<one honest verdict, max 12 words>","fixes":[{"text":"<fix>","impact":<int>},{"text":"<fix>","impact":<int>},{"text":"<fix>","impact":<int>}],"persona_breakdown":[{"name":"<persona label>","alignment":<int 0-100>,"gap":"<max 10 words>"}]},"cro":{"score":<int>,"summary":"<one honest verdict, max 12 words>","fixes":[{"text":"<fix>","impact":<int>},{"text":"<fix>","impact":<int>},{"text":"<fix>","impact":<int>}]}}}"""
+{"overall_score":<int>,"dimensions":{"tone":{"score":<int>,"summary":"<one honest verdict, max 12 words>","fixes":[{"text":"<specific fix referencing actual content>","impact":<int 1-100>},{"text":"<fix>","impact":<int>},{"text":"<fix>","impact":<int>}]},"seo":{"score":<int>,"summary":"<one honest verdict, max 12 words>","fixes":[{"text":"<fix>","impact":<int>},{"text":"<fix>","impact":<int>},{"text":"<fix>","impact":<int>}]},"persona":{"score":<int>,"summary":"<one honest verdict, max 12 words>","fixes":[{"text":"<fix>","impact":<int>},{"text":"<fix>","impact":<int>},{"text":"<fix>","impact":<int>}],"persona_breakdown":[{"name":"<persona label>","alignment":<int 0-100>,"gap":"<max 10 words>"}]},"cro":{"score":<int>,"summary":"<one honest verdict, max 12 words>","fixes":[{"text":"<fix>","impact":<int>},{"text":"<fix>","impact":<int>},{"text":"<fix>","impact":<int>}]}}}"""
 
     user = f"CONTENT TO AUDIT:\n---\n{content}\n---\n\nTARGET PERSONAS:\n{persona_lines}\n\nKEYWORDS TO SCORE AGAINST: {', '.join(keywords) if keywords else 'none specified'}\n\nReturn JSON only."
 
@@ -154,19 +160,18 @@ def build_regen_payload(body: dict) -> dict:
     kw_context = ", ".join(keywords) if keywords else "none"
     fixes_text = "\n".join(f"{i+1}. {f}" for i, f in enumerate(fixes))
 
-    system = """You are a senior B2B copywriter at Mitel. Your job is to substantially rewrite marketing content so it scores significantly higher on tone, SEO, persona fit, and conversion.
+    system = """You are a senior B2B copywriter at Mitel. Your job is to substantially rewrite marketing content so it scores higher on tone, SEO, persona fit, and conversion.
 
-REWRITING RULES — follow without exception:
-1. REPLACE every cliché immediately: never use seamless, robust, innovative, cutting-edge, next-gen, game-changing, empower, leverage, utilize, holistic, synergy, transformative
-2. MAKE IT SPECIFIC: replace vague claims with concrete outcomes and numbers (e.g. "reduce call handling time by 35%", "connect 500+ users", "99.99% uptime SLA")
-3. ACTIVE VOICE ONLY: rewrite every passive construction
-4. FRONT-LOAD THE VALUE: the first sentence must state what the reader gains — not what the product does
-5. INTEGRATE KEYWORDS NATURALLY: weave target keywords into headline, first paragraph, and subheadings
-6. ADD A CLEAR CTA: if none exists, add one specific one (e.g. "Book a 30-minute demo" not "Contact us")
-7. PRESERVE STRUCTURE: keep roughly the same length and any existing section breaks
-8. APPLY EVERY REQUESTED FIX: do not skip any improvement from the list
+REWRITING RULES:
+1. Only fix what is actually in the text — do not invent problems or add content that has no basis in the original
+2. Replace vague claims with concrete outcomes and numbers where possible
+3. Front-load the value: the first sentence should state what the reader gains
+4. Integrate target keywords naturally into headline, first paragraph, and subheadings
+5. Strengthen or add a clear CTA if missing or weak (e.g. "Book a 30-minute demo" not "Contact us")
+6. Preserve the overall structure and length
+7. Apply every requested fix from the list
 
-Return ONLY the rewritten content. No explanation, no preamble — just the rewritten text itself."""
+Return ONLY the rewritten content. No explanation, no preamble."""
 
     user = f"""ORIGINAL CONTENT:
 ---
@@ -179,7 +184,7 @@ KEYWORDS TO INTEGRATE: {kw_context}
 IMPROVEMENTS TO APPLY:
 {fixes_text}
 
-Rewrite the content now. Make it meaningfully better — not cosmetically tweaked. Return only the rewritten content."""
+Rewrite now. Return only the rewritten content."""
 
     return {
         "model": "claude-sonnet-4-20250514",
