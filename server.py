@@ -9,19 +9,132 @@ SETTINGS_PASSWORD = os.environ.get("SETTINGS_PASSWORD", "MiTeLdEv26!")
 API_URL = "https://api.anthropic.com/v1/messages"
 SETTINGS_FILE = "settings.json"
 
+# ── Real Mitel skill content injected into scoring prompts ────────────────────
+
+TONE_SKILL = """
+MITEL TONE & BRAND STANDARDS:
+- Voice: Clear, confident, thoughtful. Warmly professional, pragmatic.
+- Sentences: Short-to-medium (≤20 words). Longer (≤35 words) only for nuance.
+- Hook rule: First two lines must be memorable and fluid — vivid, distinctive, natural transition into body.
+- Priority order: Accuracy > Conversion > SEO
+- Subheadings every 150-300 words for scannability.
+- Use "we" for partnership tone.
+- Each paragraph = 1 clear point + support (data, analogy, or insight).
+- Max 1 analogy/example per 400-500 words.
+- Max 1 humor aside per 500 words, only if it reinforces the message.
+- Rhetorical devices (parallelism, tricolon, antithesis, etc.): max 1 of any type per piece.
+
+BANNED WORDS & PHRASES (flag only if actually present in the text):
+- Overblown clichés: game-changer, cutting-edge, revolutionary, state-of-the-art, world-class, next-level, unmatched, unparalleled, industry-leading, best-in-class (without proof)
+- Vague hype: unlock potential, move the needle, future-proof, synergy, outside the box, low-hanging fruit, bleeding edge
+- Overused metaphors: bridge the gap, silver bullet, tip of the iceberg, rocket ship, moonshot, seamless experience (without proof)
+- Filler qualifiers: very/really/truly, amazing/incredible/fantastic (unless quantified), completely/absolutely
+- LLM patterns: "In today's fast-paced world…", generic "Imagine…", ending with "The future is now", empty 3-part lists
+- Trend buzzwords: AI-powered, digital transformation (unless defined/contextualized)
+
+CRITICAL: Only flag banned words/phrases that ACTUALLY APPEAR in the submitted text. Never invent violations.
+"""
+
+SEO_AEO_SKILL = """
+MITEL SEO & AEO STANDARDS:
+- Strategy: 70% traditional SEO, 30% AEO (AI answer engine optimization).
+- Priority: Organic conversions and qualified sessions — not vanity metrics.
+
+KEYWORD PLACEMENT:
+- Primary keyword must appear in: H1/title, first 100 words, at least one H2/H3, meta description.
+- Keyword density: 1-2% (natural integration, not stuffed).
+- Semantic keywords and variations throughout body.
+
+CONTENT STRUCTURE FOR SEO:
+- H2/H3 headers every 150-300 words.
+- Bullet lists for 3+ items.
+- Short paragraphs (3-5 sentences max).
+- Internal links with descriptive anchor text.
+- Meta title: <60 chars with keyword. Meta description: <155 chars.
+
+AEO REQUIREMENTS (for AI answer engine citations):
+- Direct, concise answers to implied questions — especially in opening paragraph.
+- FAQ format highly effective: 1 primary question + 5-8 sub-questions, 100-200 word answers.
+- Structured listicles with numbered H3s.
+- Comparison tables for feature/product comparisons.
+- Step-by-step guides with numbered, action-verb headers.
+- schema.org/FAQPage markup recommended.
+- Natural, conversational language that reads as a direct answer.
+- Content must serve both click-through (SEO) and zero-click (AEO) discovery.
+
+SEARCH INTENT ALIGNMENT:
+- Informational (what/how/why): Educational articles, how-tos.
+- Commercial investigation (best/compare/vs): Comparisons, case studies.
+- Transactional (pricing/demo): Pricing pages, CTA-focused content.
+"""
+
+PERSONA_SKILL = """
+MITEL BUYER PERSONAS:
+
+PERSONA 1 — ECONOMIC BUYER (CFO / CIO / COO / VP Finance)
+Decision criteria: TCO, ROI timeline, CapEx vs OpEx, vendor consolidation, risk mitigation, business continuity.
+Pain points: Telecom costs out of control, too many vendors, can't support hybrid work, need to demonstrate ROI to board, legacy infrastructure capital burden.
+Content that works: Business outcomes first, financial language (ROI, payback, NPV), quantified results, executive peer quotes, risk/continuity framing.
+What to avoid: Technical depth, jargon without substance, over-promising on timelines.
+
+PERSONA 2 — CHAMPION (Director IT Ops / VP Customer Experience / Head of UC)
+Decision criteria: Career advancement through project success, user satisfaction, reliability (fewer support tickets), integration with existing stack, ease of management.
+Pain points: Constant firefighting, poor user experience especially for remote workers, can't support business growth, too complex to manage, innovation blocked by legacy.
+Content that works: Empower them as the hero, provide tools for internal selling, peer testimonials, implementation case studies, quick wins.
+What to avoid: Making them feel like a middleman, content they can't repurpose internally.
+
+PERSONA 3 — DECISION MAKER (VP IT / Director Telecom / IT Operations Manager)
+Decision criteria: Architecture, security/compliance certifications, integration with Microsoft 365/Salesforce/ServiceNow, SLAs, ease of administration, migration path.
+Pain points: Legacy PBX can't scale, call quality issues, integration nightmares, security/compliance pressure, vendor lock-in, lack of visibility and control.
+Content that works: Technical architecture detail, SLA specifics, integration proof, reference customers in similar environments, migration paths.
+What to avoid: Marketing fluff without technical backing, unrealistic implementation promises.
+
+PERSONA 4 — TECHNICAL INFLUENCER (Network Engineer / IT Security / Sysadmin / Voice Engineer)
+Decision criteria: Day-to-day administration, provisioning workflows, monitoring tools, security patching, bandwidth requirements, quality of vendor support.
+Pain points: Poor admin UX, security vulnerabilities in legacy systems, slow provisioning, limited diagnostic tools, inadequate documentation.
+Content that works: Hands-on technical detail, API and integration documentation, real configuration examples, support quality proof.
+What to avoid: High-level marketing language, over-simplified technical claims.
+
+PERSONA 5 — BUSINESS INFLUENCER (Dept Head / Operations Director / Contact Center Manager)
+Decision criteria: How communication tools affect their team's productivity, customer experience, and ability to meet business goals.
+Pain points: Poor tools hurt team productivity, contact center performance gaps, can't serve customers well across channels, remote work coordination problems.
+Content that works: Outcome-focused, productivity metrics, customer experience improvements, before/after comparisons.
+What to avoid: Technical depth, IT-centric language, generic claims without business context.
+
+SCORING NOTE: Do not recommend adding TCO data or ROI calculations — Mitel content rarely includes this and it is not required.
+"""
+
+CRO_SKILL = """
+MITEL CRO STANDARDS FOR CONTENT:
+- Value proposition must appear in the first paragraph — not buried mid-page.
+- Benefit-first language: state the outcome before the feature.
+- CTA must be specific and action-oriented (e.g. "Book a 30-minute demo", "Download the guide", "See pricing") — not generic ("Contact us", "Learn more").
+- CTA placement: visible above the fold and at natural decision points in the content.
+- Social proof signals: customer logos, case study references, uptime SLAs, customer counts, awards — referenced where relevant.
+- B2B content should address the buyer's stage: awareness (educate), consideration (compare/differentiate), decision (de-risk, prove).
+- Objection handling: anticipate and address the top 1-2 objections the target persona would have.
+- Urgency or reason to act: provide a clear reason why the reader should act now vs. later — without false urgency.
+- For lead-gen pages: minimize friction in the path to conversion (clear next step, no unnecessary clicks).
+
+CRO SCORING FOCUS FOR CONTENT AUDIT:
+Score based on what is actually present in the submitted copy — not on assumptions about the surrounding page.
+Reward: specific CTAs, upfront value proposition, benefit-first framing, social proof signals present in the text.
+Penalize: buried value prop, feature-only lists, generic CTAs, no reason to act.
+"""
+
 DEFAULT_SETTINGS = {
     "personas": [
-        {"id": "it_dm",    "label": "IT Decision Maker",       "role": "CIO / IT Director",        "pain": "reliability, security, vendor consolidation, reducing complexity"},
-        {"id": "biz_dm",   "label": "Business Decision Maker", "role": "CEO / CFO / COO",           "pain": "employee productivity, cost control, business continuity, ROI"},
-        {"id": "it_admin", "label": "IT Admin / Engineer",     "role": "Systems administrator",     "pain": "ease of management, uptime, integration, minimal maintenance"},
-        {"id": "end_user", "label": "End User",                "role": "Daily communications user", "pain": "ease of use, call quality, mobile access, consistency"},
-        {"id": "partner",  "label": "Channel Partner",         "role": "Reseller / MSP / VAR",      "pain": "margins, competitive positioning, customer retention"}
+        {"id": "econ_buyer",  "label": "Economic Buyer",       "role": "CFO / CIO / COO",                 "pain": "ROI, vendor consolidation, business continuity, controlling telecom costs"},
+        {"id": "champion",    "label": "Champion",              "role": "Director IT / VP Customer Experience", "pain": "user satisfaction, reliability, ease of management, career advancement"},
+        {"id": "decision_mk", "label": "Decision Maker",        "role": "VP IT / Director Telecom",        "pain": "scalability, integrations, security, SLAs, migration complexity"},
+        {"id": "tech_inf",    "label": "Technical Influencer",  "role": "Network/Voice/Security Engineer",  "pain": "admin UX, provisioning, diagnostics, security patching, vendor support"},
+        {"id": "biz_inf",     "label": "Business Influencer",   "role": "Dept Head / Contact Center Manager", "pain": "team productivity, customer experience, remote work coordination"},
     ],
     "scoring": {
-        "tone": "Mitel's voice is professional, direct, confident, outcome-focused, and human. Reward specific outcomes and concrete claims. Penalize vague marketing language, buzzwords actually present in the text, or unsubstantiated promises. Never invent violations — only flag what is actually in the content.",
-        "seo": "Score for both traditional search and AI answer engine optimization. Reward natural keyword integration in headline and first paragraph, scannable H2/H3 structure, and content that directly answers implied search queries. Penalize keyword stuffing, walls of text, and missing structure.",
-        "persona": "Score against all selected personas simultaneously. Reward role-specific language, appropriate technical depth, and content that addresses each persona's actual pain points. Penalize generic content that could apply to anyone. Do not recommend adding TCO data or ROI calculations.",
-        "cro": "Score the content's ability to convert readers. Reward a clear value proposition in the first paragraph, benefit-first language, and a specific CTA. Penalize buried value props, feature lists without business outcomes, and generic CTAs like 'Contact us'."
+        "tone": "Use the Mitel tone and brand standards. Flag only issues actually present in the text.",
+        "seo": "Use the Mitel SEO/AEO standards. Score keyword placement, structure, and AEO readiness.",
+        "persona": "Use the Mitel persona definitions. Score against all selected personas simultaneously.",
+        "cro": "Use the Mitel CRO standards. Score value proposition placement, CTA quality, and benefit-first language."
     }
 }
 
@@ -146,60 +259,68 @@ def build_analyze_payload(body: dict) -> dict:
     content  = body.get("content", "")
     personas = body.get("personas", [])
     keywords = body.get("keywords", [])
-    settings = load_settings()
-    scoring  = settings.get("scoring", DEFAULT_SETTINGS["scoring"])
 
     persona_lines = "\n".join(
         f"- {p['label']} ({p['role']}): pain points — {p['pain']}"
         for p in personas
     )
 
-    system = f"""You are a senior B2B content strategist auditing marketing content for Mitel, a unified communications company. Mitel sells phone systems, collaboration tools (MiCollab, Mitel One), and contact center solutions to mid-market and enterprise businesses globally.
+    system = f"""You are a senior B2B content strategist auditing marketing content for Mitel, a unified communications company. You have deep knowledge of Mitel's brand standards, buyer personas, SEO/AEO methodology, and conversion optimization principles.
 
-Score on 4 dimensions (integers 0-100). Be rigorous and honest. Return ONLY valid JSON, no preamble, no markdown fences.
+Score on 4 dimensions (integers 0-100). Be rigorous and honest — average content should score 60-75. Return ONLY valid JSON, no preamble, no markdown fences.
 
-CRITICAL: Only flag issues ACTUALLY PRESENT in the submitted text. Never invent violations. Fixes must reference specific content found in the text.
+CRITICAL RULES:
+- Only flag issues ACTUALLY PRESENT in the submitted text. Never invent violations or hallucinate problems.
+- Fixes must reference specific things found in the content — not generic advice.
+- Do NOT recommend adding TCO data, ROI calculations, or cost justification.
+- Do NOT penalize passive voice.
 
-SCORING CRITERIA:
+━━━ DIMENSION 1: TONE & BRAND ━━━
+{TONE_SKILL}
 
-1. TONE & BRAND (score: tone)
-{scoring['tone']}
-- Score 90+: Excellent. Concrete, specific, defensible claims throughout.
-- Score 70-89: Good but some vague or unsubstantiated language present.
-- Score 50-69: Noticeable fluff or buzzwords actually found in the text.
-- Score below 50: Dominated by generic, hypey, or unsubstantiated content.
+Scoring bands:
+- 90+: Excellent — concrete, specific, defensible claims. No empty language. Hook is strong.
+- 70-89: Good — mostly strong but some vague claims or weak sections.
+- 50-69: Fair — noticeable fluff, buzzwords, or unsubstantiated claims ACTUALLY in the text.
+- Below 50: Poor — dominated by generic, hypey language with no substance.
 
-2. SEO / AEO (score: seo)
-{scoring['seo']}
-- Score 90+: Keywords well-placed, strong structure, answers implied query directly.
-- Score 70-89: Keywords present but placement or structure could be stronger.
-- Score 50-69: Sparse keywords, limited structure, hard to scan.
-- Score below 50: No keyword strategy visible, no structure.
+━━━ DIMENSION 2: SEO / AEO ━━━
+{SEO_AEO_SKILL}
 
-3. PERSONA FIT (score: persona)
-{scoring['persona']}
-- Score 90+: Speaks to every selected persona's role and concerns directly.
-- Score 70-89: Relevant to most but misses some pain points.
-- Score 50-69: Generic, misses role-specific language for some personas.
-- Score below 50: Wrong audience or ignores most persona pain points.
+Scoring bands:
+- 90+: Excellent — keyword in headline + first paragraph + subheadings. Directly answers implied query. Strong AEO structure.
+- 70-89: Good — keywords present but placement or structure could be stronger.
+- 50-69: Fair — keywords sparse or missing from key positions. Limited structure.
+- Below 50: Poor — no keyword strategy visible. No scannable structure.
 
-4. CRO READINESS (score: cro)
-{scoring['cro']}
-- Score 90+: Clear CTA, value prop upfront, benefits before features.
-- Score 70-89: CTA and value prop present but not prominent.
-- Score 50-69: CTA buried or generic, feature-first.
-- Score below 50: No CTA, no value proposition.
+━━━ DIMENSION 3: PERSONA FIT ━━━
+{PERSONA_SKILL}
 
-For each fix, provide an impact score (integer 1-100) estimating the score improvement if implemented.
+Scoring bands:
+- 90+: Excellent — speaks directly to role-specific concerns of every selected persona. Right depth for each.
+- 70-89: Good — relevant to most but misses specific pain points for some.
+- 50-69: Fair — generic content, misses role-specific language for some personas.
+- Below 50: Poor — wrong audience or ignores most pain points.
 
-Return EXACTLY:
-{{"overall_score":<int>,"dimensions":{{"tone":{{"score":<int>,"summary":"<max 12 words>","fixes":[{{"text":"<fix>","impact":<int>}},{{"text":"<fix>","impact":<int>}},{{"text":"<fix>","impact":<int>}}]}},"seo":{{"score":<int>,"summary":"<max 12 words>","fixes":[{{"text":"<fix>","impact":<int>}},{{"text":"<fix>","impact":<int>}},{{"text":"<fix>","impact":<int>}}]}},"persona":{{"score":<int>,"summary":"<max 12 words>","fixes":[{{"text":"<fix>","impact":<int>}},{{"text":"<fix>","impact":<int>}},{{"text":"<fix>","impact":<int>}}],"persona_breakdown":[{{"name":"<label>","alignment":<int>,"gap":"<max 10 words>"}}]}},"cro":{{"score":<int>,"summary":"<max 12 words>","fixes":[{{"text":"<fix>","impact":<int>}},{{"text":"<fix>","impact":<int>}},{{"text":"<fix>","impact":<int>}}]}}}}}}"""
+━━━ DIMENSION 4: CRO READINESS ━━━
+{CRO_SKILL}
 
-    user = f"CONTENT TO AUDIT:\n---\n{content}\n---\n\nTARGET PERSONAS:\n{persona_lines}\n\nKEYWORDS TO SCORE AGAINST: {', '.join(keywords) if keywords else 'none specified'}\n\nReturn JSON only."
+Scoring bands:
+- 90+: Excellent — value prop upfront, benefit-first language, specific CTA, social proof present.
+- 70-89: Good — CTA and value prop present but not prominent enough.
+- 50-69: Fair — CTA buried or generic. Feature-first without business outcomes.
+- Below 50: Poor — no CTA, no value proposition, pure feature list.
+
+For each fix, provide an impact score (integer 1-100) for the estimated score improvement if implemented.
+
+Return EXACTLY this structure:
+{{"overall_score":<int>,"dimensions":{{"tone":{{"score":<int>,"summary":"<max 12 words>","fixes":[{{"text":"<fix referencing actual content>","impact":<int>}},{{"text":"<fix>","impact":<int>}},{{"text":"<fix>","impact":<int>}}]}},"seo":{{"score":<int>,"summary":"<max 12 words>","fixes":[{{"text":"<fix>","impact":<int>}},{{"text":"<fix>","impact":<int>}},{{"text":"<fix>","impact":<int>}}]}},"persona":{{"score":<int>,"summary":"<max 12 words>","fixes":[{{"text":"<fix>","impact":<int>}},{{"text":"<fix>","impact":<int>}},{{"text":"<fix>","impact":<int>}}],"persona_breakdown":[{{"name":"<label>","alignment":<int>,"gap":"<max 10 words>"}}]}},"cro":{{"score":<int>,"summary":"<max 12 words>","fixes":[{{"text":"<fix>","impact":<int>}},{{"text":"<fix>","impact":<int>}},{{"text":"<fix>","impact":<int>}}]}}}}}}"""
+
+    user = f"CONTENT TO AUDIT:\n---\n{content}\n---\n\nSELECTED PERSONAS:\n{persona_lines}\n\nKEYWORDS TO SCORE AGAINST: {', '.join(keywords) if keywords else 'none specified'}\n\nReturn JSON only."
 
     return {
         "model": "claude-sonnet-4-20250514",
-        "max_tokens": 1600,
+        "max_tokens": 1800,
         "system": system,
         "messages": [{"role": "user", "content": user}],
     }
@@ -208,13 +329,14 @@ Return EXACTLY:
 def build_keywords_payload(body: dict) -> dict:
     content  = body.get("content", "")
     existing = body.get("existing", [])
+
     return {
         "model": "claude-sonnet-4-20250514",
         "max_tokens": 400,
-        "system": "You are an SEO strategist for Mitel, a B2B unified communications company. Return ONLY a JSON array of 6-8 keyword strings — no preamble, no markdown fences.",
+        "system": "You are an SEO strategist for Mitel, a B2B unified communications company. Suggest keywords that improve both traditional search rankings and AI engine visibility (AEO). Return ONLY a JSON array of 6-8 keyword strings — no preamble, no markdown fences.",
         "messages": [{
             "role": "user",
-            "content": f"Suggest the most impactful SEO/AEO keywords for this content. Focus on B2B telecom, unified communications, cloud phone systems, contact center terms.\n\nContent:\n---\n{content}\n---\n\nAlready targeting: {', '.join(existing) if existing else 'none'}\n\nReturn only NEW keywords not in the list: [\"keyword 1\",\"keyword 2\",...]"
+            "content": f"Suggest the most impactful SEO/AEO keywords for this content. Focus on B2B telecom, unified communications, cloud phone systems, and contact center terms that real buyers search for.\n\nContent:\n---\n{content}\n---\n\nAlready targeting: {', '.join(existing) if existing else 'none'}\n\nReturn only NEW keywords not in the list: [\"keyword 1\",\"keyword 2\",...]"
         }],
     }
 
@@ -229,20 +351,23 @@ def build_regen_payload(body: dict) -> dict:
     kw_context  = ", ".join(keywords) if keywords else "none"
     fixes_text  = "\n".join(f"{i+1}. {f}" for i, f in enumerate(fixes))
 
-    system = """You are a senior B2B copywriter at Mitel. Rewrite the content to meaningfully improve its tone, SEO, persona fit, and conversion — applying only the listed improvements.
+    system = f"""You are a senior B2B copywriter at Mitel. Rewrite the content applying the listed improvements, grounded in Mitel's brand and content standards.
 
-Rules:
-- Only fix what is actually in the text
-- Replace vague claims with concrete outcomes where possible
-- Front-load the value proposition
-- Integrate target keywords naturally
-- Strengthen or add a specific CTA if weak or missing
-- Preserve overall structure and length
-- Apply every listed fix
+MITEL TONE RULES TO APPLY:
+{TONE_SKILL}
+
+REWRITING RULES:
+1. Only fix what is actually in the text — do not invent problems
+2. Replace vague claims with concrete outcomes where the original supports it
+3. Front-load the value proposition — first sentence states what the reader gains
+4. Integrate target keywords naturally into headline, first paragraph, and subheadings
+5. Strengthen or add a specific CTA if weak or missing (e.g. "Book a 30-minute demo" not "Contact us")
+6. Preserve the overall structure and approximate length
+7. Apply every fix from the list
 
 Return ONLY the rewritten content. No explanation, no preamble."""
 
-    user = f"ORIGINAL:\n---\n{content}\n---\nPERSONAS: {persona_context}\nKEYWORDS: {kw_context}\n\nFIXES:\n{fixes_text}\n\nReturn only the rewritten content."
+    user = f"ORIGINAL:\n---\n{content}\n---\nTARGET PERSONAS: {persona_context}\nKEYWORDS TO INTEGRATE: {kw_context}\n\nFIXES TO APPLY:\n{fixes_text}\n\nReturn only the rewritten content."
 
     return {
         "model": "claude-sonnet-4-20250514",
