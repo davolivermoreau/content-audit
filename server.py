@@ -124,17 +124,17 @@ Penalize: buried value prop, feature-only lists, generic CTAs, no reason to act.
 
 DEFAULT_SETTINGS = {
     "personas": [
-        {"id": "econ_buyer",  "label": "Economic Buyer",       "role": "CFO / CIO / COO",                 "pain": "ROI, vendor consolidation, business continuity, controlling telecom costs"},
+        {"id": "econ_buyer",  "label": "Economic Buyer",       "role": "CFO / CIO / COO",                     "pain": "ROI, vendor consolidation, business continuity, controlling telecom costs"},
         {"id": "champion",    "label": "Champion",              "role": "Director IT / VP Customer Experience", "pain": "user satisfaction, reliability, ease of management, career advancement"},
-        {"id": "decision_mk", "label": "Decision Maker",        "role": "VP IT / Director Telecom",        "pain": "scalability, integrations, security, SLAs, migration complexity"},
-        {"id": "tech_inf",    "label": "Technical Influencer",  "role": "Network/Voice/Security Engineer",  "pain": "admin UX, provisioning, diagnostics, security patching, vendor support"},
-        {"id": "biz_inf",     "label": "Business Influencer",   "role": "Dept Head / Contact Center Manager", "pain": "team productivity, customer experience, remote work coordination"},
+        {"id": "decision_mk", "label": "Decision Maker",        "role": "VP IT / Director Telecom",             "pain": "scalability, integrations, security, SLAs, migration complexity"},
+        {"id": "tech_inf",    "label": "Technical Influencer",  "role": "Network / Voice / Security Engineer",  "pain": "admin UX, provisioning, diagnostics, security patching, vendor support"},
+        {"id": "biz_inf",     "label": "Business Influencer",   "role": "Dept Head / Contact Center Manager",   "pain": "team productivity, customer experience, remote work coordination"},
     ],
     "scoring": {
-        "tone": "Use the Mitel tone and brand standards. Flag only issues actually present in the text.",
-        "seo": "Use the Mitel SEO/AEO standards. Score keyword placement, structure, and AEO readiness.",
-        "persona": "Use the Mitel persona definitions. Score against all selected personas simultaneously.",
-        "cro": "Use the Mitel CRO standards. Score value proposition placement, CTA quality, and benefit-first language."
+        "tone": TONE_SKILL.strip(),
+        "seo": SEO_AEO_SKILL.strip(),
+        "persona": PERSONA_SKILL.strip(),
+        "cro": CRO_SKILL.strip(),
     }
 }
 
