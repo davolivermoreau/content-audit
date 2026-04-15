@@ -115,13 +115,19 @@ const DIMS = [
   { id: "cro",     label: "CRO Readiness", desc: "Conversion potential & CTAs",       color: "#9a6b00",  bg: "#fdf6e0" },
 ];
 
-const PERSONAS = [
+const DEFAULT_PERSONAS = [
   { id: "it_dm",    label: "IT Decision Maker",       role: "CIO / IT Director",        pain: "reliability, security, vendor consolidation, reducing complexity" },
   { id: "biz_dm",   label: "Business Decision Maker", role: "CEO / CFO / COO",           pain: "employee productivity, cost control, business continuity, ROI" },
   { id: "it_admin", label: "IT Admin / Engineer",     role: "Systems administrator",     pain: "ease of management, uptime, integration, minimal maintenance" },
   { id: "end_user", label: "End User",                role: "Daily communications user", pain: "ease of use, call quality, mobile access, consistency" },
   { id: "partner",  label: "Channel Partner",         role: "Reseller / MSP / VAR",      pain: "margins, competitive positioning, customer retention" },
 ];
+const DEFAULT_SCORING = {
+  tone: "Mitel's voice is professional, direct, confident, outcome-focused, and human. Reward specific outcomes and concrete claims. Penalize vague marketing language or buzzwords actually present in the text. Never invent violations.",
+  seo: "Score for both traditional search and AI answer engine optimization. Reward natural keyword integration, scannable H2/H3 structure, and direct answers to implied queries. Penalize keyword stuffing and walls of text.",
+  persona: "Score against all selected personas simultaneously. Reward role-specific language and appropriate technical depth. Do not recommend adding TCO data or ROI calculations.",
+  cro: "Score the content's ability to convert readers. Reward a clear value proposition upfront, benefit-first language, and a specific CTA. Penalize buried value props and generic CTAs."
+};
 
 const getGrade = s => {
   if (s >= 90) return { letter: "A", color: M.teal,    label: "Excellent" };
@@ -266,11 +272,32 @@ function App() {
   const [results,          setResults]          = useState(null);
   const [error,            setError]            = useState(null);
 
+  /* Settings */
+  const [PERSONAS,         setPERSONAS]         = useState(DEFAULT_PERSONAS);
+  const [settingsOpen,     setSettingsOpen]     = useState(false);
+  const [settingsAuth,     setSettingsAuth]     = useState(false);
+  const [settingsPwd,      setSettingsPwd]      = useState("");
+  const [settingsPwdErr,   setSettingsPwdErr]   = useState("");
+  const [settingsTab,      setSettingsTab]      = useState("personas");
+  const [settingsSaving,   setSettingsSaving]   = useState(false);
+  const [settingsSaved,    setSettingsSaved]    = useState(false);
+  const [editPersonas,     setEditPersonas]     = useState(DEFAULT_PERSONAS);
+  const [editScoring,      setEditScoring]      = useState(DEFAULT_SCORING);
+  const [editApiKey,       setEditApiKey]       = useState("");
+
   const [checkedFixes,     setCheckedFixes]     = useState({});
   const [regenLoading,     setRegenLoading]     = useState(false);
   const [improvedText,     setImprovedText]     = useState("");
   const [improvedResults,  setImprovedResults]  = useState(null);
   const [retestLoading,    setRetestLoading]    = useState(false);
+
+  /* Load settings on mount */
+  React.useEffect(() => {
+    fetch("/api/settings").then(r => r.json()).then(s => {
+      if (s.personas?.length) { setPERSONAS(s.personas); setEditPersonas(s.personas); }
+      if (s.scoring) setEditScoring(s.scoring);
+    }).catch(() => {});
+  }, []);
 
   const togglePersona = id => setSelectedPersonas(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
 
@@ -358,6 +385,33 @@ function App() {
     finally { setRetestLoading(false); }
   };
 
+  /* Settings */
+  const openSettings = () => { setSettingsOpen(true); setSettingsAuth(false); setSettingsPwd(""); setSettingsPwdErr(""); setSettingsSaved(false); };
+  const closeSettings = () => { setSettingsOpen(false); };
+  const authSettings = async () => {
+    try {
+      const r = await fetch("/api/settings/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password: settingsPwd }) });
+      const d = await r.json();
+      if (d.ok) { setSettingsAuth(true); setSettingsPwdErr(""); }
+      else { setSettingsPwdErr("Incorrect password"); }
+    } catch { setSettingsPwdErr("Connection error"); }
+  };
+  const saveSettings = async () => {
+    setSettingsSaving(true); setSettingsSaved(false);
+    try {
+      const body = { password: settingsPwd || "MiTeLdEv26!", personas: editPersonas, scoring: editScoring };
+      if (editApiKey.trim()) body.api_key = editApiKey.trim();
+      await fetch("/api/settings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      setPERSONAS(editPersonas);
+      setSettingsSaved(true);
+      setTimeout(() => setSettingsSaved(false), 2500);
+    } catch { }
+    finally { setSettingsSaving(false); }
+  };
+  const addPersona = () => setEditPersonas(prev => [...prev, { id: `p${Date.now()}`, label: "", role: "", pain: "" }]);
+  const removePersona = id => setEditPersonas(prev => prev.filter(p => p.id !== id));
+  const updatePersona = (id, field, val) => setEditPersonas(prev => prev.map(p => p.id === id ? { ...p, [field]: val } : p));
+
   const goBack = () => {
     setView("form"); setResults(null); setImprovedText(""); setImprovedResults(null);
     setCheckedFixes({}); setError(null);
@@ -400,7 +454,7 @@ function App() {
             Powered by Claude AI
           </p>
         </div>
-        <div style={{ marginLeft: "auto", display: "flex", gap: 10 }}>
+        <div style={{ marginLeft: "auto", display: "flex", gap: 10, alignItems: "center" }}>
           {view === "results" && (
             <button onClick={goBack} className="btn-ghost"
               style={{ color: "#fff", borderColor: "rgba(255,255,255,0.35)", fontSize: 12, padding: "7px 15px" }}>
@@ -413,6 +467,10 @@ function App() {
               New audit
             </button>
           )}
+          <button onClick={openSettings} title="Settings"
+            style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 7, width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 10a2 2 0 100-4 2 2 0 000 4z" stroke="white" strokeWidth="1.4"/><path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M2.8 2.8l1.1 1.1M12.1 12.1l1.1 1.1M2.8 13.2l1.1-1.1M12.1 3.9l1.1-1.1" stroke="white" strokeWidth="1.4" strokeLinecap="round"/></svg>
+          </button>
         </div>
       </nav>
 
@@ -813,6 +871,133 @@ function App() {
               style={{ padding: "10px 24px", background: regenLoading ? "#c49300" : M.yellow, color: "#000", fontSize: 13 }}>
               {regenLoading ? <><Spin dark size={14} />Regenerating…</> : "Regenerate content →"}
             </button>
+          </div>
+        </div>
+      )}
+      {/* ══ SETTINGS MODAL ══ */}
+      {settingsOpen && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(10,15,30,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+          <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 680, maxHeight: "90vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
+
+            {/* Modal header */}
+            <div style={{ background: M.darkNavy, padding: "16px 22px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 10a2 2 0 100-4 2 2 0 000 4z" stroke="white" strokeWidth="1.4"/><path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M2.8 2.8l1.1 1.1M12.1 12.1l1.1 1.1M2.8 13.2l1.1-1.1M12.1 3.9l1.1-1.1" stroke="white" strokeWidth="1.4" strokeLinecap="round"/></svg>
+                <span style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>Settings</span>
+                <span style={{ fontSize: 11, color: M.yellow, fontWeight: 600, background: "rgba(253,185,19,0.15)", border: "1px solid rgba(253,185,19,0.3)", borderRadius: 20, padding: "2px 8px" }}>Admin only</span>
+              </div>
+              <button onClick={closeSettings} style={{ background: "rgba(255,255,255,0.1)", border: "none", color: "#fff", width: 28, height: 28, borderRadius: 6, cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+            </div>
+
+            {/* Password gate */}
+            {!settingsAuth ? (
+              <div style={{ padding: 40, textAlign: "center" }}>
+                <svg width="40" height="40" viewBox="0 0 40 40" fill="none" style={{ margin: "0 auto 16px", display: "block" }}><circle cx="20" cy="20" r="19" stroke="#dae1ea" strokeWidth="2"/><path d="M20 12a5 5 0 015 5v3H15v-3a5 5 0 015-5z" stroke={M.navBlue} strokeWidth="1.8"/><rect x="13" y="20" width="14" height="10" rx="2" stroke={M.navBlue} strokeWidth="1.8"/><circle cx="20" cy="25" r="1.5" fill={M.navBlue}/></svg>
+                <p style={{ fontSize: 15, fontWeight: 600, color: M.darkNavy, marginBottom: 6 }}>Enter admin password</p>
+                <p style={{ fontSize: 13, color: "#8898a8", marginBottom: 20 }}>Settings are protected. Enter the admin password to continue.</p>
+                <div style={{ display: "flex", gap: 8, maxWidth: 320, margin: "0 auto" }}>
+                  <input type="password" style={{ flex: 1, padding: "10px 13px", border: `1.5px solid ${settingsPwdErr ? M.red : "#dae1ea"}`, borderRadius: 8, fontSize: 14, fontFamily: "inherit" }}
+                    placeholder="Password"
+                    value={settingsPwd} onChange={e => { setSettingsPwd(e.target.value); setSettingsPwdErr(""); }}
+                    onKeyDown={e => e.key === "Enter" && authSettings()} autoFocus />
+                  <button onClick={authSettings}
+                    style={{ padding: "10px 20px", background: M.midBlue, color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                    Unlock
+                  </button>
+                </div>
+                {settingsPwdErr && <p style={{ marginTop: 10, fontSize: 13, color: M.red }}>{settingsPwdErr}</p>}
+              </div>
+            ) : (
+              <>
+                {/* Tabs */}
+                <div style={{ display: "flex", borderBottom: "1px solid #dae1ea", background: "#f8fafc", flexShrink: 0 }}>
+                  {[["personas", "Personas"], ["scoring", "Scoring rules"], ["api", "API key"]].map(([id, label]) => (
+                    <button key={id} onClick={() => setSettingsTab(id)}
+                      style={{ padding: "12px 20px", background: "none", border: "none", borderBottom: `2px solid ${settingsTab === id ? M.midBlue : "transparent"}`, color: settingsTab === id ? M.midBlue : "#7a8ea0", fontSize: 13, fontWeight: settingsTab === id ? 600 : 400, cursor: "pointer", fontFamily: "inherit", marginBottom: -1 }}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Tab content */}
+                <div style={{ overflowY: "auto", flex: 1, padding: "22px 24px" }}>
+
+                  {/* ── Personas tab ── */}
+                  {settingsTab === "personas" && (
+                    <div>
+                      <p style={{ fontSize: 12.5, color: "#8898a8", marginBottom: 16 }}>Add, edit or remove personas. Changes apply immediately after saving.</p>
+                      {editPersonas.map((p, i) => (
+                        <div key={p.id} style={{ background: "#f8fafc", border: "1.5px solid #dae1ea", borderRadius: 10, padding: 16, marginBottom: 10 }}>
+                          <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                            <input type="text" style={{ flex: 1, padding: "8px 11px", border: "1.5px solid #dae1ea", borderRadius: 7, fontSize: 13, fontFamily: "inherit" }}
+                              placeholder="Persona label (e.g. IT Decision Maker)"
+                              value={p.label} onChange={e => updatePersona(p.id, "label", e.target.value)} />
+                            <button onClick={() => removePersona(p.id)}
+                              style={{ padding: "8px 12px", background: "#fff5f5", border: "1px solid #fca5a5", borderRadius: 7, color: M.red, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+                              Remove
+                            </button>
+                          </div>
+                          <input type="text" style={{ width: "100%", padding: "8px 11px", border: "1.5px solid #dae1ea", borderRadius: 7, fontSize: 13, fontFamily: "inherit", marginBottom: 8 }}
+                            placeholder="Role (e.g. CIO / IT Director)"
+                            value={p.role} onChange={e => updatePersona(p.id, "role", e.target.value)} />
+                          <input type="text" style={{ width: "100%", padding: "8px 11px", border: "1.5px solid #dae1ea", borderRadius: 7, fontSize: 13, fontFamily: "inherit" }}
+                            placeholder="Pain points (comma separated)"
+                            value={p.pain} onChange={e => updatePersona(p.id, "pain", e.target.value)} />
+                        </div>
+                      ))}
+                      <button onClick={addPersona}
+                        style={{ padding: "9px 18px", background: "#eaf3fb", border: "1.5px solid #b8d4ee", borderRadius: 8, color: M.midBlue, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                        + Add persona
+                      </button>
+                    </div>
+                  )}
+
+                  {/* ── Scoring tab ── */}
+                  {settingsTab === "scoring" && (
+                    <div>
+                      <p style={{ fontSize: 12.5, color: "#8898a8", marginBottom: 16 }}>Customize what Claude rewards and penalizes per dimension. Be specific — Claude follows these instructions directly.</p>
+                      {DIMS.map(d => (
+                        <div key={d.id} style={{ marginBottom: 18 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
+                            <img src={ICONS[d.id]} alt="" width={22} height={22} />
+                            <label style={{ fontSize: 12, fontWeight: 700, color: M.navBlue, textTransform: "uppercase", letterSpacing: "0.7px" }}>{d.label}</label>
+                          </div>
+                          <textarea style={{ width: "100%", minHeight: 90, padding: "10px 13px", border: "1.5px solid #dae1ea", borderRadius: 8, fontSize: 13, lineHeight: 1.6, fontFamily: "inherit", resize: "vertical" }}
+                            value={editScoring[d.id] || ""}
+                            onChange={e => setEditScoring(prev => ({ ...prev, [d.id]: e.target.value }))} />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* ── API key tab ── */}
+                  {settingsTab === "api" && (
+                    <div>
+                      <p style={{ fontSize: 12.5, color: "#8898a8", marginBottom: 16 }}>Update the Anthropic API key used for analysis. Leave blank to keep the current key.</p>
+                      <label style={{ fontSize: 11, fontWeight: 700, color: M.navBlue, textTransform: "uppercase", letterSpacing: "0.8px", display: "block", marginBottom: 8 }}>New API key</label>
+                      <input type="password" style={{ width: "100%", padding: "10px 13px", border: "1.5px solid #dae1ea", borderRadius: 8, fontSize: 13, fontFamily: "inherit", marginBottom: 8 }}
+                        placeholder="sk-ant-… (leave blank to keep current)"
+                        value={editApiKey} onChange={e => setEditApiKey(e.target.value)} />
+                      <p style={{ fontSize: 12, color: "#9aabb8" }}>The key is stored server-side and never exposed to the browser.</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Save bar */}
+                <div style={{ borderTop: "1px solid #dae1ea", padding: "14px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0, background: "#f8fafc" }}>
+                  <button onClick={closeSettings} style={{ padding: "9px 18px", background: "transparent", border: "1.5px solid #dae1ea", borderRadius: 8, color: "#7a8ea0", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                    Cancel
+                  </button>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    {settingsSaved && <span style={{ fontSize: 13, color: M.teal, fontWeight: 600 }}>✓ Saved</span>}
+                    <button onClick={saveSettings} disabled={settingsSaving}
+                      style={{ padding: "9px 22px", background: settingsSaving ? "#b0c4d8" : M.midBlue, color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 7 }}>
+                      {settingsSaving ? <><Spin size={13} />Saving…</> : "Save changes"}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
