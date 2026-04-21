@@ -2,6 +2,8 @@ import os
 import json
 import urllib.request
 import urllib.error
+import re
+from html.parser import HTMLParser
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 
 ANTHROPIC_KEY = os.environ.get("ANTHROPIC_KEY", "")
@@ -172,6 +174,53 @@ def call_anthropic(payload: dict) -> dict:
         return json.loads(resp.read())
 
 
+
+class MetaParser(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.title = ""
+        self.description = ""
+        self.in_title = False
+
+    def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+        if tag == "title":
+            self.in_title = True
+        if tag == "meta":
+            name = (attrs.get("name") or attrs.get("property") or "").lower()
+            content = attrs.get("content", "")
+            if name in ("description", "og:description") and not self.description:
+                self.description = content
+            if name in ("og:title",) and not self.title:
+                self.title = content
+
+    def handle_endtag(self, tag):
+        if tag == "title":
+            self.in_title = False
+
+    def handle_data(self, data):
+        if self.in_title and not self.title:
+            self.title += data.strip()
+
+
+def fetch_meta(url: str) -> dict:
+    try:
+        req = urllib.request.Request(
+            url,
+            headers={"User-Agent": "Mozilla/5.0 (compatible; MitelContentAudit/1.0)"}
+        )
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            raw = resp.read(80000).decode("utf-8", errors="ignore")
+        parser = MetaParser()
+        parser.feed(raw)
+        return {
+            "title": parser.title.strip(),
+            "description": parser.description.strip(),
+            "ok": True
+        }
+    except Exception as e:
+        return {"title": "", "description": "", "ok": False, "error": str(e)}
+
 class Handler(SimpleHTTPRequestHandler):
     def log_message(self, format, *args):
         pass
@@ -207,7 +256,8 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_POST(self):
         allowed = ("/api/analyze", "/api/keywords", "/api/regenerate",
-                   "/api/settings", "/api/settings/auth")
+                   "/api/settings", "/api/settings/auth", "/api/fetch-meta",
+                   "/api/fetch-url", "/api/crosslinks")
         if self.path not in allowed:
             self.send_response(404)
             self.end_headers()
@@ -237,6 +287,38 @@ class Handler(SimpleHTTPRequestHandler):
                     current["api_key"] = body["api_key"]
                 save_settings(current)
                 self.send_json(200, {"ok": True})
+                return
+
+            if self.path == "/api/fetch-meta":
+                result = fetch_meta(body.get("url", ""))
+                self.send_json(200, result)
+                return
+
+            if self.path == "/api/fetch-url":
+                meta = fetch_meta(body.get("url", ""))
+                # Also extract body text for content field
+                try:
+                    req = urllib.request.Request(
+                        body.get("url", ""),
+                        headers={"User-Agent": "Mozilla/5.0 (compatible; MitelContentAudit/1.0)"}
+                    )
+                    with urllib.request.urlopen(req, timeout=10) as resp:
+                        raw = resp.read(200000).decode("utf-8", errors="ignore")
+                    # Strip tags, collapse whitespace
+                    text = re.sub(r"<script[^>]*>.*?</script>", " ", raw, flags=re.DOTALL|re.IGNORECASE)
+                    text = re.sub(r"<style[^>]*>.*?</style>", " ", text, flags=re.DOTALL|re.IGNORECASE)
+                    text = re.sub(r"<[^>]+>", " ", text)
+                    text = re.sub(r"\s+", " ", text).strip()
+                    text = text[:8000]  # cap at ~8k chars
+                    self.send_json(200, {"text": text, "title": meta.get("title",""), "ok": True})
+                except Exception as e:
+                    self.send_json(200, {"text": "", "title": "", "ok": False, "error": str(e)})
+                return
+
+            if self.path == "/api/crosslinks":
+                result = call_anthropic(build_crosslinks_payload(body))
+                text = result.get("content", [{}])[0].get("text", "")
+                self.send_json(200, {"text": text})
                 return
 
             if self.path == "/api/analyze":
@@ -376,6 +458,41 @@ Return ONLY the rewritten content. No explanation, no preamble."""
         "messages": [{"role": "user", "content": user}],
     }
 
+
+
+def build_crosslinks_payload(body: dict) -> dict:
+    content  = body.get("content", "")
+    library  = body.get("library", [])
+
+    pages_text = ""
+    for group in library:
+        pages_text += f"\nGROUP: {group.get('group', 'General')}\n"
+        for p in group.get("pages", []):
+            pages_text += f"  - Title: {p.get('title', '')}\n    URL: {p.get('url', '')}\n"
+            if p.get("description"):
+                pages_text += f"    Description: {p.get('description', '')}\n"
+
+    system = """You are a senior SEO strategist for Mitel. Your job is to suggest the most relevant internal links to add to a piece of content, based on a library of existing pages.
+
+Rules:
+- Suggest 3-6 links maximum. Quality over quantity.
+- Only suggest links that are genuinely relevant to the content — do not force links.
+- For each link, specify: the recommended anchor text, the exact sentence or paragraph where it should be inserted, and why it's relevant.
+- Anchor text must be natural and descriptive (not "click here" or "learn more").
+- Prefer links that help the reader go deeper on a topic already mentioned in the content.
+- Return ONLY valid JSON — no preamble, no markdown fences.
+
+Return EXACTLY:
+[{"url":"<url>","title":"<page title>","anchor_text":"<recommended anchor text>","placement":"<quote the exact sentence or phrase where the link should be inserted>","reason":"<max 15 words why this link is relevant>"}]"""
+
+    user = f"CONTENT:\n---\n{content}\n---\n\nPAGE LIBRARY:\n{pages_text}\n\nSuggest internal links. Return JSON array only."
+
+    return {
+        "model": "claude-sonnet-4-20250514",
+        "max_tokens": 1200,
+        "system": system,
+        "messages": [{"role": "user", "content": user}],
+    }
 
 if __name__ == "__main__":
     server = HTTPServer(("0.0.0.0", 5000), Handler)
